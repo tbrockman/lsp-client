@@ -1,8 +1,11 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView} from "@codemirror/view"
-import {ChangeSet, ChangeDesc, MapMode} from "@codemirror/state"
+import {ChangeSet, ChangeDesc, MapMode, Extension} from "@codemirror/state"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
+import {type LSPFeature} from "./feature"
+
+// FIXME go over error routing
 
 class Request<Result> {
   declare resolve: (result: Result) => void
@@ -73,6 +76,10 @@ class WorkspaceMapping {
     return mapping ? mapping.mapPos(pos, mode) : pos
   }
 
+  getMapping(uri: string) {
+    return this.mappings.get(uri)
+  }
+
   // FIXME more utility functions
 }
 
@@ -115,7 +122,21 @@ export class LSPClient {
       clientInfo: {name: "@codemirror/lsp-client"},
       rootUri: null,
       capabilities: {
-        textDocument: {}
+        textDocument: {
+          completion: {
+            completionItem: {
+              snippetSupport: true, // FIXME
+              documentationFormat: ["plaintext", "markdown"], // FIXME
+              insertReplaceSupport: true, // FIXME
+              
+            },
+            completionList: {
+              itemDefaults: ["commitCharacters", "editRange", "insertTextFormat"]
+            },
+            completionItemKind: {valueSet: []},
+            contextSupport: true,
+          }
+        },
       }
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
@@ -280,19 +301,24 @@ export class LSPClient {
     }
   }
 
-  completions(view: EditorView) {
+  completions(view: EditorView, pos: number, explicit: boolean) {
+    // FIXME check server capabilities
     this.sync(view)
     let uri = view.plugin(lspPlugin)!.uri
-    let pos = view.state.selection.main.head
-    this.request("textDocument/completion", {
+    return this.request("textDocument/completion", {
       position: toPos(view.state, pos),
       textDocument: {uri},
-    }).then(result => console.log(result))
+      context: {triggerKind: explicit ? 1 : 2}
+    })
   }
 
-  editorExtension(uri: string, config?: {}) {
-    return [
-      lspPlugin.of({client: this, uri})
-    ]
+  editorExtension(uri: string, features: LSPFeature = []): Extension {
+    let extensions: Extension[] = [lspPlugin.of({client: this, uri})]
+    let walk = (feature: LSPFeature) => {
+      if (Array.isArray(feature)) feature.forEach(walk)
+      else extensions.push(feature.extension(this))
+    }
+    walk(features)
+    return extensions
   }
 }
