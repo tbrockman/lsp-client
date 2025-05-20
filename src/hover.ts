@@ -10,7 +10,9 @@ import {LSPClient} from "./client.js"
 export function lspHoverTooltips(): LSPFeature {
   return {
     extension(client: LSPClient) {
-      return hoverTooltip(lspTooltipSource(client))
+      return hoverTooltip(lspTooltipSource(client), {
+        hideOn: tr => tr.docChanged
+      })
     }
   }
 }
@@ -19,7 +21,6 @@ function lspTooltipSource(client: LSPClient) {
   return async (view: EditorView, pos: number): Promise<Tooltip | null> => {
     let result = await client.hover(view, pos)
     if (!result) return null
-    // FIXME mapping
     return {
       pos: result.range ? fromPos(view.state, result.range.start) : pos,
       end: result.range ? fromPos(view.state, result.range.end) : pos,
@@ -39,15 +40,19 @@ function renderTooltipContent(
   view: EditorView,
   value: string | lsp.MarkupContent | lsp.MarkedString | lsp.MarkedString[]
 ) {
-  if (Array.isArray(value)) return value.map(m => renderCode(view, m)).join("<br>")
-  if (typeof value == "string" || typeof value == "object" && "language" in value) return renderCode(view, value)
-  return client.docToHTML(value)
+  if (Array.isArray(value)) return value.map(m => renderCode(client, view, m)).join("<br>")
+  if (typeof value == "string" || typeof value == "object" && "language" in value) return renderCode(client, view, value)
+  return client.docToHTML(view, value)
 } 
 
-function renderCode(view: EditorView, code: lsp.MarkedString) {
-  let lang = view.state.facet(languageFacet)
+function renderCode(client: LSPClient, view: EditorView, code: lsp.MarkedString) {
   let {language, value} = typeof code == "string" ? {language: null, value: code} : code
-  if (!lang || language != null && lang.name != language) return escHTML(value)
+  let lang = client.config.highlightLanguage && client.config.highlightLanguage(language || "")
+  if (!lang) {
+    let viewLang = view.state.facet(languageFacet)
+    if (viewLang && (!language || viewLang.name == language)) lang = viewLang
+  }
+  if (!lang) return escHTML(value)
   let result = ""
   highlightCode(value, lang.parser.parse(value), {style: tags => highlightingFor(view.state, tags)}, (text, cls) => {
     result += cls ? `<span class="${cls}">${escHTML(text)}</span>` : escHTML(text)

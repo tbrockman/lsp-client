@@ -1,10 +1,11 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Extension} from "@codemirror/state"
+import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
 import {type LSPFeature} from "./feature.js"
-import {docToHTML} from "./text.js"
+import {docToHTML, withContext} from "./text.js"
 import {lspTheme} from "./theme.js"
 
 // FIXME go over error routing
@@ -104,7 +105,19 @@ const notificationHandlers: {[method in keyof Notifications]?: (client: LSPClien
 }
 
 export type LSPClientConfig = {
+  /// LSP servers can send Markdown code, which the client must render
+  /// and display as HTML. Markdown can contain arbitrary HTML and is
+  /// thus a potential channel for cross-site scripting attacks, if
+  /// someone is able to compromise your LSP server or your connection
+  /// to it. You can pass an HTML sanitizer here to strip out
+  /// suspicious HTML structure.
   sanitizeHTML?: (html: string) => string
+  /// By default, the Markdown renderer will only be able to highlght
+  /// code embedded in the Markdown text when its language tag matches
+  /// the name of the language used by the editor. You can provide a
+  /// function here that returns a CodeMirror language object for a
+  /// given language tag to support morelanguages.
+  highlightLanguage?: (name: string) => Language | null
 }
 
 export class LSPClient {
@@ -316,8 +329,8 @@ export class LSPClient {
     }
   }
 
-  docToHTML(value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
-    let html = docToHTML(value, defaultKind)
+  docToHTML(view: EditorView, value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
+    let html = withContext(view, this.config.highlightLanguage, () => docToHTML(value, defaultKind))
     return this.config.sanitizeHTML ? this.config.sanitizeHTML(html) : html
   }
 

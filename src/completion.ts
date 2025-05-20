@@ -1,6 +1,7 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorState} from "@codemirror/state"
 import {CompletionSource, Completion, CompletionContext, snippet} from "@codemirror/autocomplete"
+import {EditorView} from "@codemirror/view"
 import {LSPFeature} from "./feature.js"
 import {LSPClient} from "./client.js"
 
@@ -35,7 +36,7 @@ function lspCompletionSource(client: LSPClient): CompletionSource {
           option.commitCharacters = item.commitCharacters
         if (item.detail) option.detail = item.detail
         if (item.insertTextFormat == 2) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
-        if (item.documentation) option.info = () => renderDocInfo(client, item.documentation!)
+        if (item.documentation) option.info = () => renderDocInfo(client, context.view!, item.documentation!)
         // FIXME info
         return option
       }),
@@ -57,10 +58,10 @@ function completionResultRange(cx: CompletionContext, result: lsp.CompletionList
   return {from: line.from + range.start.character, to: line.from + range.end.character}
 }
 
-function renderDocInfo(client: LSPClient, doc: string | lsp.MarkupContent) {
+function renderDocInfo(client: LSPClient, view: EditorView, doc: string | lsp.MarkupContent) {
   let elt = document.createElement("div")
   elt.className = "cm-lsp-documentation cm-lsp-completion-documentation"
-  elt.innerHTML = client.docToHTML(doc)
+  elt.innerHTML = client.docToHTML(view, doc)
   return elt
 }
 
