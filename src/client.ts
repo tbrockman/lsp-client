@@ -3,8 +3,9 @@ import {EditorView} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Extension} from "@codemirror/state"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
-import {type LSPFeature} from "./feature"
-import {docToHTML} from "./text"
+import {type LSPFeature} from "./feature.js"
+import {docToHTML} from "./text.js"
+import {lspTheme} from "./theme.js"
 
 // FIXME go over error routing
 
@@ -28,6 +29,7 @@ class Request<Result> {
 type Requests = {
   "initialize": [lsp.InitializeParams, lsp.InitializeResult],
   "textDocument/completion": [lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null],
+  "textDocument/hover": [lsp.HoverParams, lsp.Hover | null],
 }
 
 type Notifications = {
@@ -109,6 +111,7 @@ export class LSPClient {
   transport: Transport | null = null
   nextID = 0
   requests: Request<any>[] = []
+  // FIXME use an array?
   openFiles: Map<string, OpenFile> = new Map
   serverCapabilities: lsp.ServerCapabilities | null = null
   initializing: Promise<null>
@@ -144,6 +147,9 @@ export class LSPClient {
             },
             completionItemKind: {valueSet: []},
             contextSupport: true,
+          },
+          hover: {
+            contentFormat: ["markdown", "plaintext"]
           }
         },
       }
@@ -325,10 +331,20 @@ export class LSPClient {
       context: {triggerKind: explicit ? 1 : 2}
     })
   }
+
+  hover(view: EditorView, pos: number) {
+    if (!this.serverCapabilities?.hoverProvider) return Promise.resolve(null)
+    this.sync(view)
+    let uri = view.plugin(lspPlugin)!.uri
+    return this.request("textDocument/hover", {
+      position: toPos(view.state, pos),
+      textDocument: {uri},
+    })
+  }
 }
 
 export function lspSupport(client: LSPClient, fileURI: string, features: LSPFeature = []): Extension {
-  let extensions: Extension[] = [lspPlugin.of({client, uri: fileURI})]
+  let extensions: Extension[] = [lspPlugin.of({client, uri: fileURI}), lspTheme]
   let walk = (feature: LSPFeature) => {
     if (Array.isArray(feature)) feature.forEach(walk)
     else extensions.push(feature.extension(client))

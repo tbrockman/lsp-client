@@ -1,8 +1,8 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorState} from "@codemirror/state"
 import {CompletionSource, Completion, CompletionContext, snippet} from "@codemirror/autocomplete"
-import {LSPFeature} from "./feature"
-import {LSPClient} from "./client"
+import {LSPFeature} from "./feature.js"
+import {LSPClient} from "./client.js"
 
 export function lspCompletion(): LSPFeature {
   return {
