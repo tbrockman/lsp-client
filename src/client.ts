@@ -32,6 +32,7 @@ type Requests = {
   "textDocument/completion": [lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null],
   "textDocument/hover": [lsp.HoverParams, lsp.Hover | null],
   "textDocument/formatting": [lsp.DocumentFormattingParams, lsp.TextEdit[] | null],
+  "textDocument/rename": [lsp.RenameParams, lsp.WorkspaceEdit | null],
 }
 
 type Notifications = {
@@ -119,6 +120,13 @@ export type LSPClientConfig = {
   /// function here that returns a CodeMirror language object for a
   /// given language tag to support morelanguages.
   highlightLanguage?: (name: string) => Language | null
+  /// Some actions, like symbol rename, can cause the server to return
+  /// changes in files other than the one the active editor has open.
+  /// When this happens, the client will try to call this handler,
+  /// when given, to process such changes. If it is not provided, or
+  /// it returns false, and another editor view has the given URI
+  /// open, the changes will be dispatched to the other editor.
+  handleChangeInFile?: (uri: string, changes: lsp.TextEdit[]) => boolean
 }
 
 export class LSPClient {
@@ -127,7 +135,7 @@ export class LSPClient {
   requests: Request<any>[] = []
   // FIXME use an array?
   openFiles: Map<string, OpenFile> = new Map
-  serverCapabilities: lsp.ServerCapabilities | null = null
+  serverCapabilities: lsp.ServerCapabilities = {}
   initializing: Promise<null>
   declare initialized: () => void
 
@@ -165,7 +173,8 @@ export class LSPClient {
           hover: {
             contentFormat: ["markdown", "plaintext"]
           },
-          formatting: {}
+          formatting: {},
+          rename: {},
         },
       }
     }).promise.then(resp => {
@@ -188,7 +197,7 @@ export class LSPClient {
 
   disconnect() {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
-    this.serverCapabilities = null
+    this.serverCapabilities = {}
     this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
   }
 
@@ -338,7 +347,7 @@ export class LSPClient {
   }
 
   completions(view: EditorView, pos: number, explicit: boolean) {
-    if (!this.serverCapabilities?.completionProvider) return Promise.resolve(null)
+    if (!this.serverCapabilities.completionProvider) return Promise.resolve(null)
     this.sync(view)
     return this.request("textDocument/completion", {
       position: toPos(view.state.doc, pos),
@@ -348,7 +357,7 @@ export class LSPClient {
   }
 
   hover(view: EditorView, pos: number) {
-    if (!this.serverCapabilities?.hoverProvider) return Promise.resolve(null)
+    if (!this.serverCapabilities.hoverProvider) return Promise.resolve(null)
     this.sync(view)
     return this.request("textDocument/hover", {
       position: toPos(view.state.doc, pos),
@@ -357,11 +366,22 @@ export class LSPClient {
   }
 
   formatting(view: EditorView, options: lsp.FormattingOptions) {
-    if (!this.serverCapabilities?.documentFormattingProvider)
+    if (!this.serverCapabilities.documentFormattingProvider)
       return Promise.resolve({response: null, mapping: new WorkspaceMapping(this, [])})
     this.sync(view)
     return this.mappedRequest("textDocument/formatting", {
       options,
+      textDocument: {uri: editorURI(view)},
+    })
+  }
+
+  rename(view: EditorView, pos: number, newName: string) {
+    if (!this.serverCapabilities.renameProvider)
+      return Promise.resolve({response: null, mapping: new WorkspaceMapping(this, [])})
+    this.sync(view)
+    return this.mappedRequest("textDocument/rename", {
+      newName,
+      position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
     })
   }

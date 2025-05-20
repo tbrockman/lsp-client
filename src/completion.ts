@@ -8,6 +8,7 @@ import {LSPClient} from "./client.js"
 export function lspCompletion(): LSPFeature {
   return {
     extension(client) {
+      // FIXME use override instead to suppress other sources? Make an option?
       let source = lspCompletionSource(client)
       let data = [{autocomplete: source}]
       return [EditorState.languageData.of(() => data)]
