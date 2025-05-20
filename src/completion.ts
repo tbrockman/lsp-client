@@ -34,7 +34,8 @@ function lspCompletionSource(client: LSPClient): CompletionSource {
         if (item.commitCharacters && item.commitCharacters != defaultCommitChars)
           option.commitCharacters = item.commitCharacters
         if (item.detail) option.detail = item.detail
-        if (item.insertTextFormat == 2) option.apply = snippet(text)
+        if (item.insertTextFormat == 2) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
+        if (item.documentation) option.info = () => renderDocInfo(client, item.documentation!)
         // FIXME info
         return option
       }),
@@ -54,6 +55,13 @@ function completionResultRange(cx: CompletionContext, result: lsp.CompletionList
   if (!range) return cx.state.wordAt(cx.pos) || {from: cx.pos, to: cx.pos}
   let line = cx.state.doc.lineAt(cx.pos)
   return {from: line.from + range.start.character, to: line.from + range.end.character}
+}
+
+function renderDocInfo(client: LSPClient, doc: string | lsp.MarkupContent) {
+  let elt = document.createElement("div")
+  elt.className = "cm-lsp-documentation cm-lsp-completion-documentation"
+  elt.innerHTML = client.docToHTML(doc)
+  return elt
 }
 
 const kindToType: {[kind: number]: string} = {

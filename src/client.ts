@@ -4,6 +4,7 @@ import {ChangeSet, ChangeDesc, MapMode, Extension} from "@codemirror/state"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
 import {type LSPFeature} from "./feature"
+import {docToHTML} from "./text"
 
 // FIXME go over error routing
 
@@ -100,6 +101,10 @@ const notificationHandlers: {[method in keyof Notifications]?: (client: LSPClien
   }
 }
 
+export type LSPClientConfig = {
+  sanitizeHTML?: (html: string) => string
+}
+
 export class LSPClient {
   transport: Transport | null = null
   nextID = 0
@@ -109,7 +114,7 @@ export class LSPClient {
   initializing: Promise<null>
   declare initialized: () => void
 
-  constructor() {
+  constructor(readonly config: LSPClientConfig = {}) {
     this.receiveMessage = this.receiveMessage.bind(this)
     this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
   }
@@ -122,13 +127,17 @@ export class LSPClient {
       clientInfo: {name: "@codemirror/lsp-client"},
       rootUri: null,
       capabilities: {
+        general: {
+          markdown: {
+            parser: "marked",
+          },
+        },            
         textDocument: {
           completion: {
             completionItem: {
-              snippetSupport: true, // FIXME
-              documentationFormat: ["plaintext", "markdown"], // FIXME
-              insertReplaceSupport: true, // FIXME
-              
+              snippetSupport: true,
+              documentationFormat: ["plaintext", "markdown"],
+              insertReplaceSupport: false,
             },
             completionList: {
               itemDefaults: ["commitCharacters", "editRange", "insertTextFormat"]
@@ -287,7 +296,7 @@ export class LSPClient {
     }
   }
 
-  cleanMapping() {
+  private cleanMapping() {
     let oldest: Map<string, number> = new Map
     for (let req of this.requests) if (req.mapBase) {
       for (let {uri, version} of req.mapBase) {
@@ -301,8 +310,13 @@ export class LSPClient {
     }
   }
 
+  docToHTML(value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
+    let html = docToHTML(value, defaultKind)
+    return this.config.sanitizeHTML ? this.config.sanitizeHTML(html) : html
+  }
+
   completions(view: EditorView, pos: number, explicit: boolean) {
-    // FIXME check server capabilities
+    if (!this.serverCapabilities?.completionProvider) return Promise.resolve(null)
     this.sync(view)
     let uri = view.plugin(lspPlugin)!.uri
     return this.request("textDocument/completion", {
@@ -311,14 +325,14 @@ export class LSPClient {
       context: {triggerKind: explicit ? 1 : 2}
     })
   }
+}
 
-  editorExtension(uri: string, features: LSPFeature = []): Extension {
-    let extensions: Extension[] = [lspPlugin.of({client: this, uri})]
-    let walk = (feature: LSPFeature) => {
-      if (Array.isArray(feature)) feature.forEach(walk)
-      else extensions.push(feature.extension(this))
-    }
-    walk(features)
-    return extensions
+export function lspSupport(client: LSPClient, fileURI: string, features: LSPFeature = []): Extension {
+  let extensions: Extension[] = [lspPlugin.of({client, uri: fileURI})]
+  let walk = (feature: LSPFeature) => {
+    if (Array.isArray(feature)) feature.forEach(walk)
+    else extensions.push(feature.extension(client))
   }
+  walk(features)
+  return extensions
 }
