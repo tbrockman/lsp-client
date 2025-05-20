@@ -31,6 +31,7 @@ type Requests = {
   "initialize": [lsp.InitializeParams, lsp.InitializeResult],
   "textDocument/completion": [lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null],
   "textDocument/hover": [lsp.HoverParams, lsp.Hover | null],
+  "textDocument/formatting": [lsp.DocumentFormattingParams, lsp.TextEdit[] | null],
 }
 
 type Notifications = {
@@ -163,7 +164,8 @@ export class LSPClient {
           },
           hover: {
             contentFormat: ["markdown", "plaintext"]
-          }
+          },
+          formatting: {}
         },
       }
     }).promise.then(resp => {
@@ -338,10 +340,9 @@ export class LSPClient {
   completions(view: EditorView, pos: number, explicit: boolean) {
     if (!this.serverCapabilities?.completionProvider) return Promise.resolve(null)
     this.sync(view)
-    let uri = view.plugin(lspPlugin)!.uri
     return this.request("textDocument/completion", {
       position: toPos(view.state.doc, pos),
-      textDocument: {uri},
+      textDocument: {uri: editorURI(view)},
       context: {triggerKind: explicit ? 1 : 2}
     })
   }
@@ -349,12 +350,27 @@ export class LSPClient {
   hover(view: EditorView, pos: number) {
     if (!this.serverCapabilities?.hoverProvider) return Promise.resolve(null)
     this.sync(view)
-    let uri = view.plugin(lspPlugin)!.uri
     return this.request("textDocument/hover", {
       position: toPos(view.state.doc, pos),
-      textDocument: {uri},
+      textDocument: {uri: editorURI(view)},
     })
   }
+
+  formatting(view: EditorView, options: lsp.FormattingOptions) {
+    if (!this.serverCapabilities?.documentFormattingProvider)
+      return Promise.resolve({response: null, mapping: new WorkspaceMapping(this, [])})
+    this.sync(view)
+    return this.mappedRequest("textDocument/formatting", {
+      options,
+      textDocument: {uri: editorURI(view)},
+    })
+  }
+}
+
+function editorURI(view: EditorView) {
+  let plugin = view.plugin(lspPlugin)
+  if (!plugin) throw new Error("Editor view doesn't have the LSP plugin loaded")
+  return plugin.uri
 }
 
 export function lspSupport(client: LSPClient, fileURI: string, features: LSPFeature = []): Extension {

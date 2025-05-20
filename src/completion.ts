@@ -15,6 +15,7 @@ export function lspCompletion(): LSPFeature {
   }
 }
 
+// FIXME this is going to provide completions even when you type something like a {
 function lspCompletionSource(client: LSPClient): CompletionSource {
   return async context => {
     if (!context.view) return null
