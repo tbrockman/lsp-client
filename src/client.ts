@@ -1,6 +1,6 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView} from "@codemirror/view"
-import {ChangeSet, ChangeDesc, MapMode, Extension} from "@codemirror/state"
+import {ChangeSet, ChangeDesc, MapMode, Extension, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
@@ -303,13 +303,14 @@ export class LSPClient {
       let main = this.mainEditor(file.uri, editor)!
       let plugin = main.plugin(lspPlugin)
       if (!plugin) continue
-      if (!plugin.fileState.changes.empty || plugin.fileState.syncedVersion != file.version) {
+        let {fileState} = plugin
+      if (!fileState.changes.empty || fileState.syncedVersion != file.version) {
         file.version++
-        if (this.requests.some(r => r.mapBase)) file.history.push(plugin.fileState)
+        if (this.requests.some(r => r.mapBase)) file.history.push(fileState)
         plugin.fileState = new FileState(file.version, ChangeSet.empty(main.state.doc.length))
         this.notification("textDocument/didChange", {
           textDocument: {uri: file.uri, version: file.version},
-          contentChanges: [{text: main.state.doc.toString()}] // FIXME incremental updates
+          contentChanges: contentChangesFor(file, fileState, main.state.doc)
         })
       }
     }
@@ -339,7 +340,7 @@ export class LSPClient {
     this.sync(view)
     let uri = view.plugin(lspPlugin)!.uri
     return this.request("textDocument/completion", {
-      position: toPos(view.state, pos),
+      position: toPos(view.state.doc, pos),
       textDocument: {uri},
       context: {triggerKind: explicit ? 1 : 2}
     })
@@ -350,7 +351,7 @@ export class LSPClient {
     this.sync(view)
     let uri = view.plugin(lspPlugin)!.uri
     return this.request("textDocument/hover", {
-      position: toPos(view.state, pos),
+      position: toPos(view.state.doc, pos),
       textDocument: {uri},
     })
   }
@@ -364,4 +365,19 @@ export function lspSupport(client: LSPClient, fileURI: string, features: LSPFeat
   }
   walk(features)
   return extensions
+}
+
+const enum Sync { AlwaysIfSmaller = 1024 }
+
+function contentChangesFor(file: OpenFile, fileState: FileState, doc: Text): lsp.TextDocumentContentChangeEvent[] {
+  if (file.version != fileState.syncedVersion || doc.length < Sync.AlwaysIfSmaller)
+    return [{text: doc.toString()}]
+  let events: lsp.TextDocumentContentChangeEvent[] = []
+  fileState.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+    events.push({
+      range: {start: toPos(doc, fromA), end: toPos(doc, toA)},
+      text: inserted.toString()
+    })
+  })
+  return events
 }

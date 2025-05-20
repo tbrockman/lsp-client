@@ -19,11 +19,11 @@ export function lspHoverTooltips(): LSPFeature {
 
 function lspTooltipSource(client: LSPClient) {
   return async (view: EditorView, pos: number): Promise<Tooltip | null> => {
-    let result = await client.hover(view, pos)
+    const result = await client.hover(view, pos)
     if (!result) return null
     return {
-      pos: result.range ? fromPos(view.state, result.range.start) : pos,
-      end: result.range ? fromPos(view.state, result.range.end) : pos,
+      pos: result.range ? fromPos(view.state.doc, result.range.start) : pos,
+      end: result.range ? fromPos(view.state.doc, result.range.end) : pos,
       create() {
         let elt = document.createElement("div")
         elt.className = "cm-lsp-hover-tooltip cm-lsp-documentation"

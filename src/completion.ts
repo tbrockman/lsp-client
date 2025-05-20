@@ -35,9 +35,9 @@ function lspCompletionSource(client: LSPClient): CompletionSource {
         if (item.commitCharacters && item.commitCharacters != defaultCommitChars)
           option.commitCharacters = item.commitCharacters
         if (item.detail) option.detail = item.detail
-        if (item.insertTextFormat == 2) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
+        // FIXME compare allowed syntax. catch errors
+        if (item.insertTextFormat == 2 /* Snippet */) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
         if (item.documentation) option.info = () => renderDocInfo(client, context.view!, item.documentation!)
-        // FIXME info
         return option
       }),
       commitCharacters: defaultCommitChars,
