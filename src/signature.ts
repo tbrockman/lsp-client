@@ -1,5 +1,5 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {StateField, StateEffect} from "@codemirror/state"
+import {StateField, StateEffect, Prec} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate, keymap, Tooltip, showTooltip, Command} from "@codemirror/view"
 import {LSPFeature} from "./feature.js"
 import {LSPClient} from "./client.js"
@@ -61,8 +61,14 @@ const signaturePlugin = ViewPlugin.fromClass(class {
       if (result && result.signatures.length) {
         let cur = view.state.field(signatureState)
         let same = cur && sameSignatures(cur.data, result)
-        // FIXME don't update at all if active sig and param also unchanged
-        view.dispatch({effects: signatureEffect.of({data: result, pos: same ? cur!.tooltip.pos : req.pos})})
+        let active = same && context.triggerKind == 3 ? cur!.active : result.activeSignature ?? 0
+        // Don't update at all if nothing changed
+        if (same && sameActiveParam(cur!.data, result, active)) return
+        view.dispatch({effects: signatureEffect.of({
+          data: result,
+          active,
+          pos: same ? cur!.tooltip.pos : req.pos
+        })})
       } else if (view.state.field(signatureState)) {
         view.dispatch({effects: signatureEffect.of(null)})
       }
@@ -80,6 +86,11 @@ function sameSignatures(a: lsp.SignatureHelp, b: lsp.SignatureHelp) {
   return a.signatures.every((s, i) => s.label == b.signatures[i].label)
 }
 
+function sameActiveParam(a: lsp.SignatureHelp, b: lsp.SignatureHelp, active: number) {
+  return (a.signatures[active].activeParameter ?? a.activeParameter) ==
+    (b.signatures[active].activeParameter ?? b.activeParameter)
+}
+
 class SignatureState {
   constructor(
     readonly data: lsp.SignatureHelp,
@@ -93,8 +104,7 @@ const signatureState = StateField.define<SignatureState | null>({
   update(sig, tr) {
     for (let e of tr.effects) if (e.is(signatureEffect)) {
       if (e.value) {
-        let active = e.value.data.activeSignature ?? 0
-        return new SignatureState(e.value.data, active, signatureTooltip(e.value.data, active, e.value.pos))
+        return new SignatureState(e.value.data, e.value.active, signatureTooltip(e.value.data, e.value.active, e.value.pos))
       } else {
         return null
       }
@@ -106,33 +116,39 @@ const signatureState = StateField.define<SignatureState | null>({
   provide: f => showTooltip.from(f, sig => sig && sig.tooltip)
 })
 
-const signatureEffect = StateEffect.define<{data: lsp.SignatureHelp, pos: number} | null>()
+const signatureEffect = StateEffect.define<{data: lsp.SignatureHelp, active: number, pos: number} | null>()
 
 function signatureTooltip(data: lsp.SignatureHelp, active: number, pos: number): Tooltip {
   return {
     pos,
     above: true,
-    create: (view) => drawSignatureTooltip(view, data, active)
+    create: view => drawSignatureTooltip(view, data, active)
   }
 }
 
-function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, mainParam?: number) {
-  // FIXME show when multiple
-  let signature = data.signatures[data.activeSignature ?? 0]
+function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active: number) {
   let dom = document.createElement("div")
   dom.className = "cm-lsp-signature-tooltip"
+  if (data.signatures.length > 1) {
+    dom.classList.add("cm-lsp-signature-multiple")
+    let num = dom.appendChild(document.createElement("div"))
+    num.className = "cm-lsp-signature-num"
+    num.textContent = `${active + 1}/${data.signatures.length}`
+  }
+
+  let signature = data.signatures[active]
   let sig = dom.appendChild(document.createElement("div"))
   sig.className = "cm-lsp-signature"
   let activeFrom = 0, activeTo = 0
-  let activeParam = signature.activeParameter ?? data.activeParameter
-  let active = activeParam != null && signature.parameters ? signature.parameters[activeParam] : null
-  if (active && Array.isArray(active.label)) {
-    ;[activeFrom, activeTo] = active.label
-  } else if (active) {
-    let found = signature.label.indexOf(active.label as string)
+  let activeN = signature.activeParameter ?? data.activeParameter
+  let activeParam = activeN != null && signature.parameters ? signature.parameters[activeN] : null
+  if (activeParam && Array.isArray(activeParam.label)) {
+    ;[activeFrom, activeTo] = activeParam.label
+  } else if (activeParam) {
+    let found = signature.label.indexOf(activeParam.label as string)
     if (found > -1) {
       activeFrom = found
-      activeTo = found + active.label.length
+      activeTo = found + activeParam.label.length
     }
   }
   if (activeTo) {
@@ -167,14 +183,30 @@ export const lspShowSignatureHelp: Command = view => {
   return true
 }
 
-// FIXME make trigger characters configurable
+export const lspNextSignature: Command = view => {
+  let field = view.state.field(signatureState)
+  if (!field || field.active == field.data.signatures.length - 1) return false
+  view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active + 1, pos: field.tooltip.pos})})
+  return true
+}
+
+export const lspPrevSignature: Command = view => {
+  let field = view.state.field(signatureState)
+  if (!field || field.active == 0) return false
+  view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active - 1, pos: field.tooltip.pos})})
+  return true
+}
+
 export function lspSignatureHelp(): LSPFeature {
   return {
     extension: () => [
       signatureState,
       signaturePlugin,
-      // FIXME keys to change active signature
-      keymap.of([{key: "Ctrl-Shift-Space", run: lspShowSignatureHelp}])
+      Prec.high(keymap.of([
+        {key: "Mod-Shift-Space", run: lspShowSignatureHelp},
+        {key: "Mod-Shift-ArrowUp", run: lspPrevSignature},
+        {key: "Mod-Shift-ArrowDown", run: lspNextSignature},
+      ]))
     ]
   }
 }

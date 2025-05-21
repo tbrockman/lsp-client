@@ -8,14 +8,31 @@ export const lspTheme = EditorView.baseTheme({
   ".cm-lsp-signature-tooltip": {
     padding: "2px 6px",
     borderRadius: "2.5px",
+    position: "relative",
+    maxWidth: "30em",
+    maxHeight: "10em",
+    overflowY: "scroll",
+    "& .cm-lsp-documentation": {
+      padding: "0",
+      fontSize: "80%",
+    },
+    "& .cm-lsp-signature-num": {
+      fontFamily: "monospace",
+      position: "absolute",
+      left: "2px", top: "4px",
+      fontSize: "70%",
+      lineHeight: "1.3"
+    },
+    "& .cm-lsp-signature": {
+      fontFamily: "monospace",
+      textIndent: "1em hanging",
+    },
+    "& .cm-lsp-active-parameter": {
+      fontWeight: "bold"
+    },
   },
-
-  ".cm-lsp-signature": {
-    fontFamily: "monospace",
-  },
-
-  ".cm-lsp-active-parameter": {
-    fontWeight: "bold"
+  ".cm-lsp-signature-multiple": {
+    paddingLeft: "1.5em"
   },
 
   ".cm-panel.cm-rename-prompt": {
