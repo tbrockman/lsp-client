@@ -233,22 +233,22 @@ export class LSPClient {
     return null
   }
 
-  async request<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<Requests[Method][1]> {
-    await this.initializing
-    return this.requestInner(method, params).promise
+  request<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<Requests[Method][1]> {
+    return this.initializing.then(() => this.requestInner(method, params).promise)
   }
 
-  async mappedRequest<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<{
+  mappedRequest<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<{
     response: Requests[Method][1],
     mapping: WorkspaceMapping
   }> {
-    await this.initializing
-    let req = this.requestInner(method, params, true)
-    req.mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
-    return req.promise.then(response => {
-      let mapping = new WorkspaceMapping(this, req.mapBase!)
-      this.cleanMapping()
-      return {response, mapping}
+    return this.initializing.then(() => {
+      let req = this.requestInner(method, params, true)
+      req.mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
+      return req.promise.then(response => {
+        let mapping = new WorkspaceMapping(this, req.mapBase!)
+        this.cleanMapping()
+        return {response, mapping}
+      })
     })
   }
 
