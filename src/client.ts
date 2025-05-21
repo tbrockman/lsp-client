@@ -33,6 +33,7 @@ type Requests = {
   "textDocument/hover": [lsp.HoverParams, lsp.Hover | null],
   "textDocument/formatting": [lsp.DocumentFormattingParams, lsp.TextEdit[] | null],
   "textDocument/rename": [lsp.RenameParams, lsp.WorkspaceEdit | null],
+  "textDocument/signatureHelp": [lsp.SignatureHelpParams, lsp.SignatureHelp | null],
 }
 
 type Notifications = {
@@ -44,6 +45,41 @@ type Notifications = {
   "window/showMessage": lsp.ShowMessageParams,
   "window/showMessageRequest": lsp.ShowMessageRequestParams,
   "window/showDocument": lsp.ShowDocumentParams,
+}
+
+const clientCapabilities: lsp.ClientCapabilities = {
+  general: {
+    markdown: {
+      parser: "marked",
+    },
+  },            
+  textDocument: {
+    completion: {
+      completionItem: {
+        snippetSupport: true,
+        documentationFormat: ["plaintext", "markdown"],
+        insertReplaceSupport: false,
+      },
+      completionList: {
+        itemDefaults: ["commitCharacters", "editRange", "insertTextFormat"]
+      },
+      completionItemKind: {valueSet: []},
+      contextSupport: true,
+    },
+    hover: {
+      contentFormat: ["markdown", "plaintext"]
+    },
+    formatting: {},
+    rename: {},
+    signatureHelp: {
+      contextSupport: true,
+      signatureInformation: {
+        documentationFormat: ["markdown", "plaintext"],
+        parameterInformation: {labelOffsetSupport: true},
+        activeParameterSupport: true,
+      },
+    },
+  },
 }
 
 class OpenFile {
@@ -151,32 +187,7 @@ export class LSPClient {
       processId: null,
       clientInfo: {name: "@codemirror/lsp-client"},
       rootUri: null,
-      capabilities: {
-        general: {
-          markdown: {
-            parser: "marked",
-          },
-        },            
-        textDocument: {
-          completion: {
-            completionItem: {
-              snippetSupport: true,
-              documentationFormat: ["plaintext", "markdown"],
-              insertReplaceSupport: false,
-            },
-            completionList: {
-              itemDefaults: ["commitCharacters", "editRange", "insertTextFormat"]
-            },
-            completionItemKind: {valueSet: []},
-            contextSupport: true,
-          },
-          hover: {
-            contentFormat: ["markdown", "plaintext"]
-          },
-          formatting: {},
-          rename: {},
-        },
-      }
+      capabilities: clientCapabilities
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
       this.notification("initialized", {})
@@ -314,7 +325,7 @@ export class LSPClient {
       let main = this.mainEditor(file.uri, editor)!
       let plugin = main.plugin(lspPlugin)
       if (!plugin) continue
-        let {fileState} = plugin
+      let {fileState} = plugin
       if (!fileState.changes.empty || fileState.syncedVersion != file.version) {
         file.version++
         if (this.requests.some(r => r.mapBase)) file.history.push(fileState)
@@ -347,6 +358,7 @@ export class LSPClient {
   }
 
   completions(view: EditorView, pos: number, explicit: boolean) {
+    // FIXME this will short-circuit if the client isn't initialized, mooting the wait for init later
     if (!this.serverCapabilities.completionProvider) return Promise.resolve(null)
     this.sync(view)
     return this.request("textDocument/completion", {
@@ -367,7 +379,7 @@ export class LSPClient {
 
   formatting(view: EditorView, options: lsp.FormattingOptions) {
     if (!this.serverCapabilities.documentFormattingProvider)
-      return Promise.resolve({response: null, mapping: new WorkspaceMapping(this, [])})
+      return Promise.reject(new Error("Server does not support formatting"))
     this.sync(view)
     return this.mappedRequest("textDocument/formatting", {
       options,
@@ -377,10 +389,20 @@ export class LSPClient {
 
   rename(view: EditorView, pos: number, newName: string) {
     if (!this.serverCapabilities.renameProvider)
-      return Promise.resolve({response: null, mapping: new WorkspaceMapping(this, [])})
+      return Promise.reject(new Error("Server does not support rename"))
     this.sync(view)
     return this.mappedRequest("textDocument/rename", {
       newName,
+      position: toPos(view.state.doc, pos),
+      textDocument: {uri: editorURI(view)},
+    })
+  }
+
+  signatureHelp(view: EditorView, pos: number, context: lsp.SignatureHelpContext) {
+    if (!this.serverCapabilities.signatureHelpProvider) return Promise.resolve(null)
+    this.sync(view)
+    return this.request("textDocument/signatureHelp", {
+      context,
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
     })

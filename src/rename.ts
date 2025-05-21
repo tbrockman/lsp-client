@@ -60,6 +60,7 @@ function runRename(view: EditorView, newName: string) {
   })
 }
 
+// FIXME create a utility for this in @codemirror/view
 function createPromptDialog(view: EditorView): Panel {
   let input = elt("input", {class: "cm-textfield", name: "name", value: view.state.field(dialogField)}) as HTMLInputElement
   let dom = elt("form", {

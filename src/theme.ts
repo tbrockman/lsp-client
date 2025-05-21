@@ -5,6 +5,19 @@ export const lspTheme = EditorView.baseTheme({
     padding: "0 7px"
   },
 
+  ".cm-lsp-signature-tooltip": {
+    padding: "2px 6px",
+    borderRadius: "2.5px",
+  },
+
+  ".cm-lsp-signature": {
+    fontFamily: "monospace",
+  },
+
+  ".cm-lsp-active-parameter": {
+    fontWeight: "bold"
+  },
+
   ".cm-panel.cm-rename-prompt": {
     padding: "2px 6px 4px",
     position: "relative",
