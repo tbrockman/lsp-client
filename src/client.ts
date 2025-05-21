@@ -389,7 +389,10 @@ export class LSPClient {
     return this.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>("textDocument/completion", {
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
-      context: {triggerKind: explicit ? 1 : 2}
+      context: {
+        triggerCharacter: explicit || !pos ? undefined : view.state.sliceDoc(pos - 1, pos),
+        triggerKind: explicit ? 1 /* Invoked */ : 2 /* TriggerCharacter */
+      }
     })
   }
 

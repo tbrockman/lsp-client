@@ -28,9 +28,13 @@ export function serverCompletion(config: {
 /// support](#lsp-server.languageServerSupport) is active in the
 /// editor.
 export const serverCompletionSource: CompletionSource = context => {
-  // FIXME this is going to provide completions even when you type something like a {
   const client = context.view?.plugin(lspPlugin)?.client
   if (!client) return null
+  if (!context.explicit) {
+    let charBefore = context.view.state.sliceDoc(context.pos - 1, context.pos)
+    let triggers = client.serverCapabilities.completionProvider?.triggerCharacters
+    if (!/[a-zA-Z_]/.test(charBefore) && !(triggers && triggers.indexOf(charBefore) > -1)) return null
+  }
   return client.completions(context.view, context.pos, context.explicit).then(result => {
     if (!result) return null
     if (Array.isArray(result)) result = {items: result} as lsp.CompletionList
