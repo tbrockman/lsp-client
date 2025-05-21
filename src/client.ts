@@ -26,15 +26,7 @@ class Request<Result> {
   }
 }
 
-type Requests = {
-  "initialize": [lsp.InitializeParams, lsp.InitializeResult],
-  "textDocument/completion": [lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null],
-  "textDocument/hover": [lsp.HoverParams, lsp.Hover | null],
-  "textDocument/formatting": [lsp.DocumentFormattingParams, lsp.TextEdit[] | null],
-  "textDocument/rename": [lsp.RenameParams, lsp.WorkspaceEdit | null],
-  "textDocument/signatureHelp": [lsp.SignatureHelpParams, lsp.SignatureHelp | null],
-}
-
+// FIXME make simple type parameter
 type Notifications = {
   "textDocument/didOpen": lsp.DidOpenTextDocumentParams,
   "textDocument/didClose": lsp.DidCloseTextDocumentParams,
@@ -126,12 +118,19 @@ function isNotification(msg: lsp.ResponseMessage | lsp.NotificationMessage): msg
   return (msg as any).id == null
 }
 
+/// An object of this type should be used to wrap whatever transport
+/// layer you use to talk to your language server. Messages should
+/// contain only the JSON messages, no LSP headers.
 export type Transport = {
+  /// Send a message to the server.
   send(message: string): void
+  /// Register a handler for messages coming from the server.
   subscribe(handler: (value: string) => void): void
+  /// Unregister a handler registered with `subscribe`.
   unsubscribe(handler: (value: string) => void): void
 }
 
+// FIXME handle others
 const notificationHandlers: {[method in keyof Notifications]?: (client: LSPClient, params: Notifications[method]) => void} = {
   "window/logMessage": (client, params) => {
     if (params.type == 1) console.error(params.message)
@@ -139,6 +138,7 @@ const notificationHandlers: {[method in keyof Notifications]?: (client: LSPClien
   }
 }
 
+/// Configuration options that can be passed to the LSP client.
 export type LSPClientConfig = {
   /// LSP servers can send Markdown code, which the client must render
   /// and display as HTML. Markdown can contain arbitrary HTML and is
@@ -162,24 +162,39 @@ export type LSPClientConfig = {
   handleChangeInFile?: (uri: string, changes: lsp.TextEdit[]) => boolean
 }
 
+/// An LSP client manages a connection to a language server. It should
+/// be explicitly [connected](#lsp-client.LSPClient.connect) before
+/// use.
 export class LSPClient {
+  /// The transport active in the client, if it is connected.
   transport: Transport | null = null
-  nextID = 0
-  requests: Request<any>[] = []
+  private nextID = 0
+  private requests: Request<any>[] = []
+  /// @internal
   openFiles: OpenFile[] = []
+  /// The capabilities advertised by the server. Will be the empty
+  /// object when not connected.
   serverCapabilities: lsp.ServerCapabilities = {}
+  /// A promise that resolves the client is connected. Will be
+  /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
-  declare initialized: () => void
+  declare private initialized: () => void
 
+  /// Create a client object.
   constructor(readonly config: LSPClientConfig = {}) {
     this.receiveMessage = this.receiveMessage.bind(this)
     this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
   }
 
+  /// Connect this client to a server over the given transport. Will
+  /// immediately start the initialization exchange with the server,
+  /// and resolve `this.initializing` (which it also returns) when
+  /// successful.
   connect(transport: Transport) {
+    if (this.transport) this.transport.unsubscribe(this.receiveMessage)
     this.transport = transport
     transport.subscribe(this.receiveMessage)
-    this.requestInner("initialize", {
+    this.requestInner<lsp.InitializeParams, lsp.InitializeResult>("initialize", {
       processId: null,
       clientInfo: {name: "@codemirror/lsp-client"},
       rootUri: null,
@@ -188,6 +203,7 @@ export class LSPClient {
       this.serverCapabilities = resp.capabilities
       this.notification("initialized", {})
       this.initialized()
+      // FIXME somehow reject this.initializing when connecting fails?
     })
     for (let file of this.openFiles) {
       let editor = this.mainEditor(file.uri)!
@@ -200,15 +216,17 @@ export class LSPClient {
         }
       })
     }
+    return this.initializing
   }
 
+  /// Disconnect the client from the server.
   disconnect() {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
     this.serverCapabilities = {}
     this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
   }
 
-  receiveMessage(msg: string) {
+  private receiveMessage(msg: string) {
     let value = JSON.parse(msg) as lsp.ResponseMessage | lsp.NotificationMessage
     console.log("received", value)
     if (!isNotification(value)) {
@@ -228,21 +246,24 @@ export class LSPClient {
     }
   }
 
+  /// @internal
   getOpenFile(uri: string) {
     for (let f of this.openFiles) if (f.uri == uri) return f
     return null
   }
 
-  request<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<Requests[Method][1]> {
-    return this.initializing.then(() => this.requestInner(method, params).promise)
+  /// FIXME document request methods
+  request<Params, Result>(method: string, params: Params): Promise<Result> {
+    return this.initializing.then(() => this.requestInner<Params, Result>(method, params).promise)
   }
 
-  mappedRequest<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<{
-    response: Requests[Method][1],
+  /// @internal
+  mappedRequest<Params, Result>(method: string, params: Params): Promise<{
+    response: Result,
     mapping: WorkspaceMapping
   }> {
     return this.initializing.then(() => {
-      let req = this.requestInner(method, params, true)
+      let req = this.requestInner<Params, Result>(method, params, true)
       req.mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
       return req.promise.then(response => {
         let mapping = new WorkspaceMapping(this, req.mapBase!)
@@ -252,25 +273,26 @@ export class LSPClient {
     })
   }
 
-  requestInner<Method extends keyof Requests>(
-    method: Method,
-    params: Requests[Method][0],
+  private requestInner<Params, Result>(
+    method: string,
+    params: Params,
     mapped = false
-  ): Request<Requests[Method][1]> {
+  ): Request<Result> {
     if (!this.transport) throw new Error("Client not connected")
     console.log("request", method, params)
     let id = ++this.nextID, data: lsp.RequestMessage = {
       jsonrpc: "2.0",
       id,
       method,
-      params
+      params: params as any
     }
-    let req = new Request<Requests[Method][1]>(id)
+    let req = new Request<Result>(id)
     this.requests.push(req)
     this.transport!.send(JSON.stringify(data))
     return req
   }
 
+  /// @internal
   notification<Method extends keyof Notifications>(method: Method, params: Notifications[Method]) {
     if (!this.transport) return
     this.initializing.then(() => {
@@ -284,6 +306,7 @@ export class LSPClient {
     })
   }
 
+  /// @internal
   registerUser(uri: string, languageId: string, view: EditorView) {
     let found = this.getOpenFile(uri)
     if (!found) {
@@ -302,6 +325,7 @@ export class LSPClient {
     return found.version
   }
 
+  /// @internal
   unregisterUser(uri: string, view: EditorView) {
     let open = this.getOpenFile(uri)
     if (!open) return
@@ -314,6 +338,7 @@ export class LSPClient {
     }
   }
 
+  /// @internal
   mainEditor(uri: string, active?: EditorView) {
     let open = this.getOpenFile(uri)
     if (!open) return null
@@ -321,7 +346,7 @@ export class LSPClient {
     return open.using[0]
   }
 
-  sync(editor?: EditorView) {
+  private sync(editor?: EditorView) {
     for (let file of this.openFiles) {
       let main = this.mainEditor(file.uri, editor)!
       let plugin = main.plugin(lspPlugin)
@@ -353,16 +378,15 @@ export class LSPClient {
     }
   }
 
+  /// @internal
   docToHTML(view: EditorView, value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
     let html = withContext(view, this.config.highlightLanguage, () => docToHTML(value, defaultKind))
     return this.config.sanitizeHTML ? this.config.sanitizeHTML(html) : html
   }
 
   completions(view: EditorView, pos: number, explicit: boolean) {
-    // FIXME this will short-circuit if the client isn't initialized, mooting the wait for init later
-    if (!this.serverCapabilities.completionProvider) return Promise.resolve(null)
     this.sync(view)
-    return this.request("textDocument/completion", {
+    return this.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>("textDocument/completion", {
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
       context: {triggerKind: explicit ? 1 : 2}
@@ -370,29 +394,24 @@ export class LSPClient {
   }
 
   hover(view: EditorView, pos: number) {
-    if (!this.serverCapabilities.hoverProvider) return Promise.resolve(null)
     this.sync(view)
-    return this.request("textDocument/hover", {
+    return this.request<lsp.HoverParams, lsp.Hover | null>("textDocument/hover", {
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
     })
   }
 
   formatting(view: EditorView, options: lsp.FormattingOptions) {
-    if (!this.serverCapabilities.documentFormattingProvider)
-      return Promise.reject(new Error("Server does not support formatting"))
     this.sync(view)
-    return this.mappedRequest("textDocument/formatting", {
+    return this.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
       options,
       textDocument: {uri: editorURI(view)},
     })
   }
 
   rename(view: EditorView, pos: number, newName: string) {
-    if (!this.serverCapabilities.renameProvider)
-      return Promise.reject(new Error("Server does not support rename"))
     this.sync(view)
-    return this.mappedRequest("textDocument/rename", {
+    return this.mappedRequest<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
       newName,
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
@@ -400,9 +419,8 @@ export class LSPClient {
   }
 
   signatureHelp(view: EditorView, pos: number, context: lsp.SignatureHelpContext) {
-    if (!this.serverCapabilities.signatureHelpProvider) return Promise.resolve(null)
     this.sync(view)
-    return this.request("textDocument/signatureHelp", {
+    return this.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
       context,
       position: toPos(view.state.doc, pos),
       textDocument: {uri: editorURI(view)},
@@ -416,6 +434,10 @@ function editorURI(view: EditorView) {
   return plugin.uri
 }
 
+/// Create an editor extension that connects that editor to the given
+/// LSP client. This will cause the client to consider the given
+/// URI/file to be open, and allow the editor to use LSP-related
+/// functionality exported by this package.
 export function languageServerSupport(client: LSPClient, fileURI: string): Extension {
   return [lspPlugin.of({client, uri: fileURI}), lspTheme]
 }

@@ -1,18 +1,34 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorState, Extension} from "@codemirror/state"
-import {CompletionSource, Completion, CompletionContext, snippet} from "@codemirror/autocomplete"
+import {CompletionSource, Completion, CompletionContext, snippet, autocompletion} from "@codemirror/autocomplete"
 import {EditorView} from "@codemirror/view"
 import {LSPClient} from "./client"
 import {lspPlugin} from "./plugin"
 
-export function serverCompletion(): Extension {
-  // FIXME use override instead to suppress other sources? Make an option?
-  let data = [{autocomplete: lspCompletionSource}]
-  return [EditorState.languageData.of(() => data)]
+/// Register the [language server completion
+/// source](#lsp-client.serverCompletionSource) as an autocompletion
+/// source.
+export function serverCompletion(config: {
+  /// By default, the completion source that asks the language server
+  /// for completions is added as a regular source, in addition to any
+  /// other sources. Set this to true to make it replace all
+  /// completion sources.
+  override?: boolean
+} = {}): Extension {
+  if (config.override) {
+    return autocompletion({override: [serverCompletionSource]})
+  } else {
+    let data = [{autocomplete: serverCompletionSource}]
+    return [autocompletion(), EditorState.languageData.of(() => data)]
+  }
 }
 
-// FIXME this is going to provide completions even when you type something like a {
-const lspCompletionSource: CompletionSource = context => {
+/// A completion source that requests completions from a language
+/// server. Only works when [server
+/// support](#lsp-server.languageServerSupport) is active in the
+/// editor.
+export const serverCompletionSource: CompletionSource = context => {
+  // FIXME this is going to provide completions even when you type something like a {
   const client = context.view?.plugin(lspPlugin)?.client
   if (!client) return null
   return client.completions(context.view, context.pos, context.explicit).then(result => {
