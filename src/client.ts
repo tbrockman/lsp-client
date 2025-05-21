@@ -26,18 +26,6 @@ class Request<Result> {
   }
 }
 
-// FIXME make simple type parameter
-type Notifications = {
-  "textDocument/didOpen": lsp.DidOpenTextDocumentParams,
-  "textDocument/didClose": lsp.DidCloseTextDocumentParams,
-  "textDocument/didChange": lsp.DidChangeTextDocumentParams,
-  "initialized": lsp.InitializedParams,
-  "window/logMessage": lsp.LogMessageParams,
-  "window/showMessage": lsp.ShowMessageParams,
-  "window/showMessageRequest": lsp.ShowMessageRequestParams,
-  "window/showDocument": lsp.ShowDocumentParams,
-}
-
 const clientCapabilities: lsp.ClientCapabilities = {
   general: {
     markdown: {
@@ -130,11 +118,13 @@ export type Transport = {
   unsubscribe(handler: (value: string) => void): void
 }
 
-// FIXME handle others
-const notificationHandlers: {[method in keyof Notifications]?: (client: LSPClient, params: Notifications[method]) => void} = {
-  "window/logMessage": (client, params) => {
+const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params: any) => void} = {
+  "window/logMessage": (client, params: lsp.LogMessageParams) => {
     if (params.type == 1) console.error(params.message)
     else if (params.type == 2) console.warn(params.message)
+  },
+  "window/showMessage": (client, params: lsp.ShowMessageParams) => {
+    // FIXME
   }
 }
 
@@ -160,6 +150,12 @@ export type LSPClientConfig = {
   /// it returns false, and another editor view has the given URI
   /// open, the changes will be dispatched to the other editor.
   handleChangeInFile?: (uri: string, changes: lsp.TextEdit[]) => boolean
+  /// By default, the client will only handle the server notifications
+  /// `window/logMessage` (logging warning and errors to the console)
+  /// and `window/showMessage`. You can pass additional handlers here.
+  /// They will be tried before the built-in handlers, and override
+  /// those when they return true.
+  notificationHandlers?: {[method: string]: (client: LSPClient, params: any) => boolean}
 }
 
 /// An LSP client manages a connection to a language server. It should
@@ -201,13 +197,13 @@ export class LSPClient {
       capabilities: clientCapabilities
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
-      this.notification("initialized", {})
+      this.notification<lsp.InitializedParams>("initialized", {})
       this.initialized()
       // FIXME somehow reject this.initializing when connecting fails?
     })
     for (let file of this.openFiles) {
       let editor = this.mainEditor(file.uri)!
-      this.notification("textDocument/didOpen", {
+      this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
         textDocument: {
           uri: file.uri,
           languageId: file.languageId,
@@ -240,9 +236,10 @@ export class LSPClient {
         else req.resolve(value.result)
       }
     } else {
-      let handler = (notificationHandlers as any)[value.method]
-      if (handler) handler(this, value.params)
-      else console.log("dropping notification", value)
+      let handler = this.config.notificationHandlers?.[value.method]
+      if (handler && handler(this, value.params)) return
+      let deflt = defaultNotificationHandlers[value.method]
+      if (deflt) deflt(this, value.params)
     }
   }
 
@@ -293,14 +290,14 @@ export class LSPClient {
   }
 
   /// @internal
-  notification<Method extends keyof Notifications>(method: Method, params: Notifications[Method]) {
+  notification<Params>(method: string, params: Params) {
     if (!this.transport) return
     this.initializing.then(() => {
       console.log("notification", method, params)
       let data: lsp.NotificationMessage = {
         jsonrpc: "2.0",
         method,
-        params
+        params: params as any
       }
       this.transport!.send(JSON.stringify(data))
     })
@@ -312,7 +309,7 @@ export class LSPClient {
     if (!found) {
       found = new OpenFile(uri, languageId)
       this.openFiles.push(found)
-      this.notification("textDocument/didOpen", {
+      this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
         textDocument: {
           uri,
           languageId,
@@ -333,7 +330,7 @@ export class LSPClient {
     if (idx < 0) return
     open.using.splice(idx, 1)
     if (!open.using.length) {
-      this.notification("textDocument/didClose", {textDocument: {uri}})
+      this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
       this.openFiles = this.openFiles.filter(f => f != open)
     }
   }
@@ -356,7 +353,7 @@ export class LSPClient {
         file.version++
         if (this.requests.some(r => r.mapBase)) file.history.push(fileState)
         plugin.fileState = new FileState(file.version, ChangeSet.empty(main.state.doc.length))
-        this.notification("textDocument/didChange", {
+        this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
           textDocument: {uri: file.uri, version: file.version},
           contentChanges: contentChangesFor(file, fileState, main.state.doc)
         })
