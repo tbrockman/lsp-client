@@ -2,8 +2,8 @@ import type * as lsp from "vscode-languageserver-protocol"
 import {EditorState, Extension} from "@codemirror/state"
 import {CompletionSource, Completion, CompletionContext, snippet} from "@codemirror/autocomplete"
 import {EditorView} from "@codemirror/view"
-import {LSPClient} from "./client.js"
-import {lspPlugin} from "./plugin.js"
+import {LSPClient} from "./client"
+import {lspPlugin} from "./plugin"
 
 export function serverCompletion(): Extension {
   // FIXME use override instead to suppress other sources? Make an option?

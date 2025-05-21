@@ -1,8 +1,8 @@
 import {ChangeSpec, StateField, StateEffect} from "@codemirror/state"
 import {EditorView, Command, keymap, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
-import {lspPlugin} from "./plugin.js"
-import {fromPos} from "./pos.js"
+import {lspPlugin} from "./plugin"
+import {fromPos} from "./pos"
 
 export const renameSymbol: Command = view => {
   let word = view.state.wordAt(view.state.selection.main.head)

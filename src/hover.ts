@@ -3,10 +3,10 @@ import {EditorView, Tooltip, hoverTooltip} from "@codemirror/view"
 import {Extension} from "@codemirror/state"
 import {language as languageFacet, highlightingFor} from "@codemirror/language"
 import {highlightCode} from "@lezer/highlight"
-import {fromPos} from "./pos.js"
-import {escHTML} from "./text.js"
-import {LSPClient} from "./client.js"
-import {lspPlugin} from "./plugin.js"
+import {fromPos} from "./pos"
+import {escHTML} from "./text"
+import {LSPClient} from "./client"
+import {lspPlugin} from "./plugin"
 
 export function hoverTooltips(): Extension {
   return hoverTooltip(lspTooltipSource, {

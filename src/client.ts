@@ -2,10 +2,10 @@ import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Extension, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
-import {lspPlugin, FileState} from "./plugin.js"
-import {toPos} from "./pos.js"
-import {docToHTML, withContext} from "./text.js"
-import {lspTheme} from "./theme.js"
+import {lspPlugin, FileState} from "./plugin"
+import {toPos} from "./pos"
+import {docToHTML, withContext} from "./text"
+import {lspTheme} from "./theme"
 
 // FIXME go over error routing
 

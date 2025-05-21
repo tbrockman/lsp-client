@@ -1,8 +1,8 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {StateField, StateEffect, Prec, Extension} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate, keymap, Tooltip, showTooltip, Command} from "@codemirror/view"
-import {LSPClient} from "./client.js"
-import {lspPlugin} from "./plugin.js"
+import {LSPClient} from "./client"
+import {lspPlugin} from "./plugin"
 
 const signaturePlugin = ViewPlugin.fromClass(class {
   activeRequest: {pos: number, drop: boolean} | null = null

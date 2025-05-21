@@ -1,8 +1,8 @@
 import {Command, keymap} from "@codemirror/view"
 import {ChangeSpec} from "@codemirror/state"
 import {indentUnit, getIndentUnit} from "@codemirror/language"
-import {lspPlugin} from "./plugin.js"
-import {fromPos} from "./pos.js"
+import {lspPlugin} from "./plugin"
+import {fromPos} from "./pos"
 
 export const formatDocument: Command = view => {
   const plugin = view.plugin(lspPlugin)

@@ -1,7 +1,7 @@
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
 import {ChangeSet, EditorState} from "@codemirror/state"
 import {language} from "@codemirror/language"
-import {type LSPClient} from "./client.js"
+import {type LSPClient} from "./client"
 
 function languageID(state: EditorState) {
   let lang = state.facet(language)
