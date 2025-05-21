@@ -4,7 +4,6 @@ import {ChangeSet, ChangeDesc, MapMode, Extension, Text} from "@codemirror/state
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin.js"
 import {toPos} from "./pos.js"
-import {type LSPFeature} from "./feature.js"
 import {docToHTML, withContext} from "./text.js"
 import {lspTheme} from "./theme.js"
 
@@ -415,14 +414,8 @@ function editorURI(view: EditorView) {
   return plugin.uri
 }
 
-export function lspSupport(client: LSPClient, fileURI: string, features: LSPFeature = []): Extension {
-  let extensions: Extension[] = [lspPlugin.of({client, uri: fileURI}), lspTheme]
-  let walk = (feature: LSPFeature) => {
-    if (Array.isArray(feature)) feature.forEach(walk)
-    else extensions.push(feature.extension(client))
-  }
-  walk(features)
-  return extensions
+export function languageServerSupport(client: LSPClient, fileURI: string): Extension {
+  return [lspPlugin.of({client, uri: fileURI}), lspTheme]
 }
 
 const enum Sync { AlwaysIfSmaller = 1024 }

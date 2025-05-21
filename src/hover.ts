@@ -1,25 +1,23 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView, Tooltip, hoverTooltip} from "@codemirror/view"
+import {Extension} from "@codemirror/state"
 import {language as languageFacet, highlightingFor} from "@codemirror/language"
 import {highlightCode} from "@lezer/highlight"
 import {fromPos} from "./pos.js"
 import {escHTML} from "./text.js"
-import {LSPFeature} from "./feature.js"
 import {LSPClient} from "./client.js"
+import {lspPlugin} from "./plugin.js"
 
-export function lspHoverTooltips(): LSPFeature {
-  return {
-    extension(client: LSPClient) {
-      return hoverTooltip(lspTooltipSource(client), {
-        hideOn: tr => tr.docChanged
-      })
-    }
-  }
+export function hoverTooltips(): Extension {
+  return hoverTooltip(lspTooltipSource, {
+    hideOn: tr => tr.docChanged
+  })
 }
 
-function lspTooltipSource(client: LSPClient) {
-  return async (view: EditorView, pos: number): Promise<Tooltip | null> => {
-    const result = await client.hover(view, pos)
+function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null> {
+  let client = view.plugin(lspPlugin)?.client
+  if (!client) return Promise.resolve(null)
+  return client.hover(view, pos).then(result => {
     if (!result) return null
     return {
       pos: result.range ? fromPos(view.state.doc, result.range.start) : pos,
@@ -32,7 +30,7 @@ function lspTooltipSource(client: LSPClient) {
       },
       above: true
     }
-  }
+  })
 }
 
 function renderTooltipContent(

@@ -1,26 +1,21 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {EditorState} from "@codemirror/state"
+import {EditorState, Extension} from "@codemirror/state"
 import {CompletionSource, Completion, CompletionContext, snippet} from "@codemirror/autocomplete"
 import {EditorView} from "@codemirror/view"
-import {LSPFeature} from "./feature.js"
 import {LSPClient} from "./client.js"
+import {lspPlugin} from "./plugin.js"
 
-export function lspCompletion(): LSPFeature {
-  return {
-    extension(client) {
-      // FIXME use override instead to suppress other sources? Make an option?
-      let source = lspCompletionSource(client)
-      let data = [{autocomplete: source}]
-      return [EditorState.languageData.of(() => data)]
-    }
-  }
+export function serverCompletion(): Extension {
+  // FIXME use override instead to suppress other sources? Make an option?
+  let data = [{autocomplete: lspCompletionSource}]
+  return [EditorState.languageData.of(() => data)]
 }
 
 // FIXME this is going to provide completions even when you type something like a {
-function lspCompletionSource(client: LSPClient): CompletionSource {
-  return async context => {
-    if (!context.view) return null
-    let result = await client.completions(context.view, context.pos, context.explicit)
+const lspCompletionSource: CompletionSource = context => {
+  const client = context.view?.plugin(lspPlugin)?.client
+  if (!client) return null
+  return client.completions(context.view, context.pos, context.explicit).then(result => {
     if (!result) return null
     if (Array.isArray(result)) result = {items: result} as lsp.CompletionList
     let {from, to} = completionResultRange(context, result)
@@ -46,7 +41,7 @@ function lspCompletionSource(client: LSPClient): CompletionSource {
       validFor: /^\.?\w*$/, // FIXME
       map: (result, changes) => ({...result, from: changes.mapPos(result.from)}),
     }
-  }
+  })
 }
 
 function completionResultRange(cx: CompletionContext, result: lsp.CompletionList): {from: number, to: number} {

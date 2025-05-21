@@ -1,12 +1,10 @@
 import {Command, keymap} from "@codemirror/view"
 import {ChangeSpec} from "@codemirror/state"
 import {indentUnit, getIndentUnit} from "@codemirror/language"
-import {LSPClient} from "./client.js"
-import {LSPFeature} from "./feature.js"
 import {lspPlugin} from "./plugin.js"
 import {fromPos} from "./pos.js"
 
-export const lspFormatDocument: Command = view => {
+export const formatDocument: Command = view => {
   const plugin = view.plugin(lspPlugin)
   if (!plugin) return false
   let startDoc = view.state.doc
@@ -35,12 +33,6 @@ export const lspFormatDocument: Command = view => {
   return true
 }
 
-export function lspFormatting(): LSPFeature {
-  return {
-    extension(client: LSPClient) {
-      return keymap.of([
-        {key: "Shift-Alt-f", run: lspFormatDocument, preventDefault: true}
-      ])
-    }
-  }
-}
+export const formatKeymap = keymap.of([
+  {key: "Shift-Alt-f", run: formatDocument, preventDefault: true}
+])

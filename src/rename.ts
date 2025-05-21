@@ -1,12 +1,10 @@
 import {ChangeSpec, StateField, StateEffect} from "@codemirror/state"
 import {EditorView, Command, keymap, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
-import {LSPClient} from "./client.js"
-import {LSPFeature} from "./feature.js"
 import {lspPlugin} from "./plugin.js"
 import {fromPos} from "./pos.js"
 
-export const lspRenameSymbol: Command = view => {
+export const renameSymbol: Command = view => {
   let word = view.state.wordAt(view.state.selection.main.head)
   if (!word || !view.plugin(lspPlugin)) return false
   let panel = getPanel(view, createPromptDialog)
@@ -106,12 +104,6 @@ const dialogField = StateField.define<string | null>({
   provide: f => showPanel.from(f, val => val != null ? createPromptDialog : null)
 })
 
-export function lspRename(): LSPFeature {
-  return {
-    extension(client: LSPClient) {
-      return keymap.of([
-        {key: "F2", run: lspRenameSymbol, preventDefault: true}
-      ])
-    }
-  }
-}
+export const renameKeymap = keymap.of([
+  {key: "F2", run: renameSymbol, preventDefault: true}
+])

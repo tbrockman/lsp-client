@@ -1,7 +1,6 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {StateField, StateEffect, Prec} from "@codemirror/state"
+import {StateField, StateEffect, Prec, Extension} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate, keymap, Tooltip, showTooltip, Command} from "@codemirror/view"
-import {LSPFeature} from "./feature.js"
 import {LSPClient} from "./client.js"
 import {lspPlugin} from "./plugin.js"
 
@@ -19,7 +18,8 @@ const signaturePlugin = ViewPlugin.fromClass(class {
       }
     }
 
-    let plugin = update.view.plugin(lspPlugin)!
+    const plugin = update.view.plugin(lspPlugin)
+    if (!plugin) return
     let sigState = update.view.state.field(signatureState)
     if (sigState) {
       if (update.selectionSet) {
@@ -33,7 +33,7 @@ const signaturePlugin = ViewPlugin.fromClass(class {
         }, 250)
       }
     } else if (update.docChanged && update.transactions.some(tr => tr.isUserEvent("input.type"))) {
-      let serverConf = plugin.client.serverCapabilities?.signatureHelpProvider
+      const serverConf = plugin.client.serverCapabilities?.signatureHelpProvider
       if (serverConf && serverConf.triggerCharacters) {
         let triggered: string | undefined
         update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
@@ -171,11 +171,13 @@ function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active:
   return {dom}
 }
 
-export const lspShowSignatureHelp: Command = view => {
+export const showSignatureHelp: Command = view => {
   let plugin = view.plugin(signaturePlugin)
   let field = view.state.field(signatureState)
   if (!plugin || field === undefined) return false
-  plugin.startRequest(view.plugin(lspPlugin)!.client, view, {
+  let client = view.plugin(lspPlugin)?.client
+  if (!client) return false
+  plugin.startRequest(client, view, {
     triggerKind: 1 /* Invoked */,
     activeSignatureHelp: field ? field.data : undefined,
     isRetrigger: !!field
@@ -197,16 +199,14 @@ export const lspPrevSignature: Command = view => {
   return true
 }
 
-export function lspSignatureHelp(): LSPFeature {
-  return {
-    extension: () => [
-      signatureState,
-      signaturePlugin,
-      Prec.high(keymap.of([
-        {key: "Mod-Shift-Space", run: lspShowSignatureHelp},
-        {key: "Mod-Shift-ArrowUp", run: lspPrevSignature},
-        {key: "Mod-Shift-ArrowDown", run: lspNextSignature},
-      ]))
-    ]
-  }
+export function signatureHelp(): Extension {
+  return [
+    signatureState,
+    signaturePlugin,
+    Prec.high(keymap.of([
+      {key: "Mod-Shift-Space", run: showSignatureHelp},
+      {key: "Mod-Shift-ArrowUp", run: lspPrevSignature},
+      {key: "Mod-Shift-ArrowDown", run: lspNextSignature},
+    ]))
+  ]
 }
