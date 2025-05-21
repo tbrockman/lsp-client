@@ -15,7 +15,7 @@ export function hoverTooltips(): Extension {
 }
 
 function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null> {
-  let client = view.plugin(lspPlugin)?.client
+  const client = view.plugin(lspPlugin)?.client
   if (!client) return Promise.resolve(null)
   return client.hover(view, pos).then(result => {
     if (!result) return null

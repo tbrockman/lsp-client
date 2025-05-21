@@ -95,7 +95,7 @@ class WorkspaceMapping {
 
   constructor(client: LSPClient, base: readonly lsp.VersionedTextDocumentIdentifier[]) {
     for (let {uri, version} of base) {
-      let file = client.openFiles.get(uri)
+      let file = client.getOpenFile(uri)
       if (!file) continue
       let changes: ChangeDesc | null = null
       for (let v = version; v < file.version; v++) {
@@ -120,8 +120,6 @@ class WorkspaceMapping {
   getMapping(uri: string) {
     return this.mappings.get(uri)
   }
-
-  // FIXME more utility functions
 }
 
 function isNotification(msg: lsp.ResponseMessage | lsp.NotificationMessage): msg is lsp.NotificationMessage {
@@ -168,8 +166,7 @@ export class LSPClient {
   transport: Transport | null = null
   nextID = 0
   requests: Request<any>[] = []
-  // FIXME use an array?
-  openFiles: Map<string, OpenFile> = new Map
+  openFiles: OpenFile[] = []
   serverCapabilities: lsp.ServerCapabilities = {}
   initializing: Promise<null>
   declare initialized: () => void
@@ -192,7 +189,7 @@ export class LSPClient {
       this.notification("initialized", {})
       this.initialized()
     })
-    for (let file of this.openFiles.values()) {
+    for (let file of this.openFiles) {
       let editor = this.mainEditor(file.uri)!
       this.notification("textDocument/didOpen", {
         textDocument: {
@@ -231,6 +228,11 @@ export class LSPClient {
     }
   }
 
+  getOpenFile(uri: string) {
+    for (let f of this.openFiles) if (f.uri == uri) return f
+    return null
+  }
+
   async request<Method extends keyof Requests>(method: Method, params: Requests[Method][0]): Promise<Requests[Method][1]> {
     await this.initializing
     return this.requestInner(method, params).promise
@@ -242,7 +244,7 @@ export class LSPClient {
   }> {
     await this.initializing
     let req = this.requestInner(method, params, true)
-    req.mapBase = [... this.openFiles.values()].map(f => ({uri: f.uri, version: f.version}))
+    req.mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
     return req.promise.then(response => {
       let mapping = new WorkspaceMapping(this, req.mapBase!)
       this.cleanMapping()
@@ -283,9 +285,10 @@ export class LSPClient {
   }
 
   registerUser(uri: string, languageId: string, view: EditorView) {
-    let found = this.openFiles.get(uri)
+    let found = this.getOpenFile(uri)
     if (!found) {
       found = new OpenFile(uri, languageId)
+      this.openFiles.push(found)
       this.notification("textDocument/didOpen", {
         textDocument: {
           uri,
@@ -294,33 +297,32 @@ export class LSPClient {
           version: found.version
         }
       })
-      this.openFiles.set(uri, found)
     }
     found.using.unshift(view)
     return found.version
   }
 
   unregisterUser(uri: string, view: EditorView) {
-    let open = this.openFiles.get(uri)
+    let open = this.getOpenFile(uri)
     if (!open) return
     let idx = open.using.indexOf(view)
     if (idx < 0) return
     open.using.splice(idx, 1)
     if (!open.using.length) {
       this.notification("textDocument/didClose", {textDocument: {uri}})
-      this.openFiles.delete(uri)
+      this.openFiles = this.openFiles.filter(f => f != open)
     }
   }
 
   mainEditor(uri: string, active?: EditorView) {
-    let open = this.openFiles.get(uri)
+    let open = this.getOpenFile(uri)
     if (!open) return null
     if (active && open.using.indexOf(active) > -1) return active
     return open.using[0]
   }
 
   sync(editor?: EditorView) {
-    for (let file of this.openFiles.values()) {
+    for (let file of this.openFiles) {
       let main = this.mainEditor(file.uri, editor)!
       let plugin = main.plugin(lspPlugin)
       if (!plugin) continue
@@ -345,7 +347,7 @@ export class LSPClient {
         oldest.set(uri, cur == null ? version : Math.min(version, cur))
       }
     }
-    if (oldest.size) for (let file of this.openFiles.values()) {
+    if (oldest.size) for (let file of this.openFiles) {
       let minVer = oldest.get(file.uri)
       if (file.history.length) file.history = minVer == null ? [] : file.history.filter(s => s.syncedVersion >= minVer!)
     }

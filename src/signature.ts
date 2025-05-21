@@ -20,7 +20,7 @@ const signaturePlugin = ViewPlugin.fromClass(class {
 
     const plugin = update.view.plugin(lspPlugin)
     if (!plugin) return
-    let sigState = update.view.state.field(signatureState)
+    const sigState = update.view.state.field(signatureState)
     if (sigState) {
       if (update.selectionSet) {
         if (this.delayedRequest) clearTimeout(this.delayedRequest)
