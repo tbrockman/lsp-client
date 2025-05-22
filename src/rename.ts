@@ -34,6 +34,7 @@ export const renameSymbol: Command = view => {
     let {close, result} = showDialog(view, {
       label: view.state.phrase("New name"),
       input: {name: "name", value: word},
+      focus: true,
       submitLabel: view.state.phrase("rename"),
       class: "cm-lsp-rename-panel",
     })

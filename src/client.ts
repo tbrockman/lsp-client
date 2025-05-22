@@ -1,5 +1,5 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {EditorView} from "@codemirror/view"
+import {EditorView, showDialog} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin"
@@ -110,10 +110,6 @@ class WorkspaceMapping {
   }
 }
 
-function isNotification(msg: lsp.ResponseMessage | lsp.NotificationMessage): msg is lsp.NotificationMessage {
-  return (msg as any).id == null
-}
-
 /// An object of this type should be used to wrap whatever transport
 /// layer you use to talk to your language server. Messages should
 /// contain only the JSON messages, no LSP headers.
@@ -128,11 +124,17 @@ export type Transport = {
 
 const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params: any) => void} = {
   "window/logMessage": (client, params: lsp.LogMessageParams) => {
-    if (params.type == 1) console.error(params.message)
-    else if (params.type == 2) console.warn(params.message)
+    if (params.type == 1) console.error("[lsp] " + params.message)
+    else if (params.type == 2) console.warn("[lsp] " + params.message)
   },
   "window/showMessage": (client, params: lsp.ShowMessageParams) => {
-    // FIXME
+    if (!client.openFiles.length || params.type > 3 /* Info */) return
+    let view = client.openFiles[0].using[0]
+    showDialog(view, {
+      label: params.message,
+      class: "cm-lsp-message cm-lsp-message-" + (params.type == 1 ? "error" : params.type == 2 ? "warning" : "info"),
+      top: true
+    })
   }
 }
 
@@ -164,6 +166,9 @@ export type LSPClientConfig = {
   /// They will be tried before the built-in handlers, and override
   /// those when they return true.
   notificationHandlers?: {[method: string]: (client: LSPClient, params: any) => boolean}
+  /// When no handler is found for a notification, it will be passed
+  /// to this function, if given.
+  unhandledNotification?: (client: LSPClient, method: string, params: any) => void
 }
 
 /// An LSP client manages a connection to a language server. It should
@@ -230,23 +235,30 @@ export class LSPClient {
   }
 
   private receiveMessage(msg: string) {
-    let value = JSON.parse(msg) as lsp.ResponseMessage | lsp.NotificationMessage
-    console.log("received", value)
-    if (!isNotification(value)) {
-      let index = this.requests.findIndex(r => r.id == (value as lsp.ResponseMessage).id)
+    const value = JSON.parse(msg) as lsp.ResponseMessage | lsp.NotificationMessage | lsp.RequestMessage
+    if ("id" in value && !("method" in value)) {
+      let index = this.requests.findIndex(r => r.id == value.id)
       if (index < 0) {
-        console.warn(`Received a response for non-existent request ${value.id}`)
+        console.warn(`[lsp] Received a response for non-existent request ${value.id}`)
       } else {
         let req = this.requests[index]
         this.requests.splice(index, 1)
         if (value.error) req.reject(value.error)
         else req.resolve(value.result)
       }
-    } else {
+    } else if (!("id" in value)) {
       let handler = this.config.notificationHandlers?.[value.method]
       if (handler && handler(this, value.params)) return
       let deflt = defaultNotificationHandlers[value.method]
       if (deflt) deflt(this, value.params)
+      else if (this.config.unhandledNotification) this.config.unhandledNotification(this, value.method, value.params)
+    } else {
+      let resp: lsp.ResponseMessage = {
+        jsonrpc: "2.0",
+        id: value.id,
+        error: {code: -32601 /* MethodNotFound */, message: "Method not implemented"}
+      }
+      this.transport!.send(JSON.stringify(resp))
     }
   }
 
@@ -294,7 +306,6 @@ export class LSPClient {
     mapped = false
   ): Request<Result> {
     if (!this.transport) throw new Error("Client not connected")
-    console.log("request", method, params)
     let id = ++this.nextID, data: lsp.RequestMessage = {
       jsonrpc: "2.0",
       id,
@@ -311,7 +322,6 @@ export class LSPClient {
   notification<Params>(method: string, params: Params) {
     if (!this.transport) return
     this.initializing.then(() => {
-      console.log("notification", method, params)
       let data: lsp.NotificationMessage = {
         jsonrpc: "2.0",
         method,
