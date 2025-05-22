@@ -5,8 +5,7 @@ import {language as languageFacet, highlightingFor} from "@codemirror/language"
 import {highlightCode} from "@lezer/highlight"
 import {fromPos} from "./pos"
 import {escHTML} from "./text"
-import {LSPClient} from "./client"
-import {lspPlugin} from "./plugin"
+import {LSPPlugin} from "./plugin"
 
 export function hoverTooltips(): Extension {
   return hoverTooltip(lspTooltipSource, {
@@ -14,10 +13,18 @@ export function hoverTooltips(): Extension {
   })
 }
 
+function hoverRequest(plugin: LSPPlugin, pos: number) {
+  plugin.sync()
+  return plugin.client.request<lsp.HoverParams, lsp.Hover | null>("textDocument/hover", {
+    position: plugin.toPos(pos),
+    textDocument: {uri: plugin.uri},
+  })
+}
+
 function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null> {
-  const client = view.plugin(lspPlugin)?.client
-  if (!client) return Promise.resolve(null)
-  return client.hover(view, pos).then(result => {
+  const plugin = LSPPlugin.get(view)
+  if (!plugin) return Promise.resolve(null)
+  return hoverRequest(plugin, pos).then(result => {
     if (!result) return null
     return {
       pos: result.range ? fromPos(view.state.doc, result.range.start) : pos,
@@ -25,7 +32,7 @@ function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null
       create() {
         let elt = document.createElement("div")
         elt.className = "cm-lsp-hover-tooltip cm-lsp-documentation"
-        elt.innerHTML = renderTooltipContent(client, view, result.contents)
+        elt.innerHTML = renderTooltipContent(plugin, result.contents)
         return {dom: elt}
       },
       above: true
@@ -34,25 +41,24 @@ function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null
 }
 
 function renderTooltipContent(
-  client: LSPClient,
-  view: EditorView,
+  plugin: LSPPlugin,
   value: string | lsp.MarkupContent | lsp.MarkedString | lsp.MarkedString[]
 ) {
-  if (Array.isArray(value)) return value.map(m => renderCode(client, view, m)).join("<br>")
-  if (typeof value == "string" || typeof value == "object" && "language" in value) return renderCode(client, view, value)
-  return client.docToHTML(view, value)
+  if (Array.isArray(value)) return value.map(m => renderCode(plugin, m)).join("<br>")
+  if (typeof value == "string" || typeof value == "object" && "language" in value) return renderCode(plugin, value)
+  return plugin.docToHTML(value)
 } 
 
-function renderCode(client: LSPClient, view: EditorView, code: lsp.MarkedString) {
+function renderCode(plugin: LSPPlugin, code: lsp.MarkedString) {
   let {language, value} = typeof code == "string" ? {language: null, value: code} : code
-  let lang = client.config.highlightLanguage && client.config.highlightLanguage(language || "")
+  let lang = plugin.client.config.highlightLanguage && plugin.client.config.highlightLanguage(language || "")
   if (!lang) {
-    let viewLang = view.state.facet(languageFacet)
+    let viewLang = plugin.view.state.facet(languageFacet)
     if (viewLang && (!language || viewLang.name == language)) lang = viewLang
   }
   if (!lang) return escHTML(value)
   let result = ""
-  highlightCode(value, lang.parser.parse(value), {style: tags => highlightingFor(view.state, tags)}, (text, cls) => {
+  highlightCode(value, lang.parser.parse(value), {style: tags => highlightingFor(plugin.view.state, tags)}, (text, cls) => {
     result += cls ? `<span class="${cls}">${escHTML(text)}</span>` : escHTML(text)
   }, () => {
     result += "<br>"

@@ -1,9 +1,7 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorState, Extension} from "@codemirror/state"
 import {CompletionSource, Completion, CompletionContext, snippet, autocompletion} from "@codemirror/autocomplete"
-import {EditorView} from "@codemirror/view"
-import {LSPClient} from "./client"
-import {lspPlugin} from "./plugin"
+import {LSPPlugin} from "./plugin"
 
 /// Register the [language server completion
 /// source](#lsp-client.serverCompletionSource) as an autocompletion
@@ -23,19 +21,32 @@ export function serverCompletion(config: {
   }
 }
 
+function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionContext) {
+  plugin.sync()
+  return plugin.client.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>("textDocument/completion", {
+    position: plugin.toPos(pos),
+    textDocument: {uri: plugin.uri},
+    context
+  })
+}
+
 /// A completion source that requests completions from a language
 /// server. Only works when [server
 /// support](#lsp-server.languageServerSupport) is active in the
 /// editor.
 export const serverCompletionSource: CompletionSource = context => {
-  const client = context.view?.plugin(lspPlugin)?.client
-  if (!client) return null
+  const plugin = context.view && LSPPlugin.get(context.view)
+  if (!plugin) return null
+  let triggerChar = ""
   if (!context.explicit) {
-    let charBefore = context.view.state.sliceDoc(context.pos - 1, context.pos)
-    let triggers = client.serverCapabilities.completionProvider?.triggerCharacters
-    if (!/[a-zA-Z_]/.test(charBefore) && !(triggers && triggers.indexOf(charBefore) > -1)) return null
+    triggerChar = context.view.state.sliceDoc(context.pos - 1, context.pos)
+    let triggers = plugin.client.serverCapabilities.completionProvider?.triggerCharacters
+    if (!/[a-zA-Z_]/.test(triggerChar) && !(triggers && triggers.indexOf(triggerChar) > -1)) return null
   }
-  return client.completions(context.view, context.pos, context.explicit).then(result => {
+  return getCompletions(plugin, context.pos, {
+    triggerCharacter: triggerChar,
+    triggerKind: context.explicit ? 1 /* Invoked */ : 2 /* TriggerCharacter */
+  }).then(result => {
     if (!result) return null
     if (Array.isArray(result)) result = {items: result} as lsp.CompletionList
     let {from, to} = completionResultRange(context, result)
@@ -54,7 +65,7 @@ export const serverCompletionSource: CompletionSource = context => {
         if (item.detail) option.detail = item.detail
         // FIXME compare allowed syntax. catch errors
         if (item.insertTextFormat == 2 /* Snippet */) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
-        if (item.documentation) option.info = () => renderDocInfo(client, context.view!, item.documentation!)
+        if (item.documentation) option.info = () => renderDocInfo(plugin, item.documentation!)
         return option
       }),
       commitCharacters: defaultCommitChars,
@@ -75,10 +86,10 @@ function completionResultRange(cx: CompletionContext, result: lsp.CompletionList
   return {from: line.from + range.start.character, to: line.from + range.end.character}
 }
 
-function renderDocInfo(client: LSPClient, view: EditorView, doc: string | lsp.MarkupContent) {
+function renderDocInfo(plugin: LSPPlugin, doc: string | lsp.MarkupContent) {
   let elt = document.createElement("div")
   elt.className = "cm-lsp-documentation cm-lsp-completion-documentation"
-  elt.innerHTML = client.docToHTML(view, doc)
+  elt.innerHTML = plugin.docToHTML(doc)
   return elt
 }
 

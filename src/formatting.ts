@@ -1,14 +1,23 @@
+import type * as lsp from "vscode-languageserver-protocol"
 import {Command, keymap} from "@codemirror/view"
 import {ChangeSpec} from "@codemirror/state"
 import {indentUnit, getIndentUnit} from "@codemirror/language"
-import {lspPlugin} from "./plugin"
+import {LSPPlugin} from "./plugin"
 import {fromPos} from "./pos"
 
+function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
+  plugin.sync()
+  return plugin.client.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
+    options,
+    textDocument: {uri: plugin.uri},
+  })
+}
+
 export const formatDocument: Command = view => {
-  const plugin = view.plugin(lspPlugin)
+  const plugin = LSPPlugin.get(view)
   if (!plugin) return false
   let startDoc = view.state.doc
-  plugin.client.formatting(view, {
+  getFormatting(plugin, {
     tabSize: getIndentUnit(view.state),
     insertSpaces: view.state.facet(indentUnit).indexOf("\t") < 0,
   }).then(({response, mapping}) => {

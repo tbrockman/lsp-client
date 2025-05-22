@@ -4,7 +4,6 @@ import {ChangeSet, ChangeDesc, MapMode, Extension, Text} from "@codemirror/state
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin"
 import {toPos} from "./pos"
-import {docToHTML, withContext} from "./text"
 import {lspTheme} from "./theme"
 
 // FIXME go over error routing
@@ -70,9 +69,13 @@ class OpenFile {
   constructor(readonly uri: string, readonly languageId: string) {}
 }
 
+/// A workspace mapping is used to track changes made to open
+/// documents between the time a request is started and the time its
+/// result comes back.
 class WorkspaceMapping {
-  mappings: Map<string, ChangeDesc> = new Map
+  private mappings: Map<string, ChangeDesc> = new Map
 
+  /// @internal
   constructor(client: LSPClient, base: readonly lsp.VersionedTextDocumentIdentifier[]) {
     for (let {uri, version} of base) {
       let file = client.getOpenFile(uri)
@@ -90,6 +93,9 @@ class WorkspaceMapping {
     }
   }
 
+  /// Map a position in the given file forward from the document the
+  /// server had seen when the request was started to the document as
+  /// it exists when the request finished.
   mapPos(uri: string, pos: number): number
   mapPos(uri: string, pos: number, mode: MapMode): number | null
   mapPos(uri: string, pos: number, mode: MapMode = MapMode.Simple): number | null {
@@ -97,6 +103,9 @@ class WorkspaceMapping {
     return mapping ? mapping.mapPos(pos, mode) : pos
   }
 
+  /// Get the changes made to the document with the given URI during
+  /// the request. Returns null for documents that weren't changed or
+  /// aren't open.
   getMapping(uri: string) {
     return this.mappings.get(uri)
   }
@@ -249,12 +258,23 @@ export class LSPClient {
     return null
   }
 
-  /// FIXME document request methods
+  /// Make a request to the server. Returns a promise that resolves to
+  /// the response or rejects with a failure message. You'll probably
+  /// want to use types from the `vscode-languageserver-protocol`
+  /// package for the type parameters.
+  ///
+  /// The caller is responsible for
+  /// [synchronizing](#lsp-client.LSPClient.sync) state before the
+  /// request and correctly handling state drift caused by local
+  /// changes that happend during the request.
   request<Params, Result>(method: string, params: Params): Promise<Result> {
     return this.initializing.then(() => this.requestInner<Params, Result>(method, params).promise)
   }
 
-  /// @internal
+  /// Make a request that tracks local changes that happen during the
+  /// request. The returned promise resolves to both a response and an
+  /// object that tells you about document changes that happened
+  /// during the request.
   mappedRequest<Params, Result>(method: string, params: Params): Promise<{
     response: Result,
     mapping: WorkspaceMapping
@@ -337,13 +357,16 @@ export class LSPClient {
 
   /// @internal
   mainEditor(uri: string, active?: EditorView) {
-    let open = this.getOpenFile(uri)
+    let open = this.getOpenFile(uri), index
     if (!open) return null
-    if (active && open.using.indexOf(active) > -1) return active
+    if (active && (index = open.using.indexOf(active)) > -1) {
+      if (index) [open.using[index], open.using[0]] = [open.using[0], open.using[index]]
+      return active
+    }
     return open.using[0]
   }
 
-  private sync(editor?: EditorView) {
+  sync(editor?: EditorView) {
     for (let file of this.openFiles) {
       let main = this.mainEditor(file.uri, editor)!
       let plugin = main.plugin(lspPlugin)
@@ -374,64 +397,6 @@ export class LSPClient {
       if (file.history.length) file.history = minVer == null ? [] : file.history.filter(s => s.syncedVersion >= minVer!)
     }
   }
-
-  /// @internal
-  docToHTML(view: EditorView, value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
-    let html = withContext(view, this.config.highlightLanguage, () => docToHTML(value, defaultKind))
-    return this.config.sanitizeHTML ? this.config.sanitizeHTML(html) : html
-  }
-
-  completions(view: EditorView, pos: number, explicit: boolean) {
-    this.sync(view)
-    return this.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>("textDocument/completion", {
-      position: toPos(view.state.doc, pos),
-      textDocument: {uri: editorURI(view)},
-      context: {
-        triggerCharacter: explicit || !pos ? undefined : view.state.sliceDoc(pos - 1, pos),
-        triggerKind: explicit ? 1 /* Invoked */ : 2 /* TriggerCharacter */
-      }
-    })
-  }
-
-  hover(view: EditorView, pos: number) {
-    this.sync(view)
-    return this.request<lsp.HoverParams, lsp.Hover | null>("textDocument/hover", {
-      position: toPos(view.state.doc, pos),
-      textDocument: {uri: editorURI(view)},
-    })
-  }
-
-  formatting(view: EditorView, options: lsp.FormattingOptions) {
-    this.sync(view)
-    return this.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
-      options,
-      textDocument: {uri: editorURI(view)},
-    })
-  }
-
-  rename(view: EditorView, pos: number, newName: string) {
-    this.sync(view)
-    return this.mappedRequest<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
-      newName,
-      position: toPos(view.state.doc, pos),
-      textDocument: {uri: editorURI(view)},
-    })
-  }
-
-  signatureHelp(view: EditorView, pos: number, context: lsp.SignatureHelpContext) {
-    this.sync(view)
-    return this.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
-      context,
-      position: toPos(view.state.doc, pos),
-      textDocument: {uri: editorURI(view)},
-    })
-  }
-}
-
-function editorURI(view: EditorView) {
-  let plugin = view.plugin(lspPlugin)
-  if (!plugin) throw new Error("Editor view doesn't have the LSP plugin loaded")
-  return plugin.uri
 }
 
 /// Create an editor extension that connects that editor to the given

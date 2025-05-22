@@ -1,12 +1,22 @@
+import type * as lsp from "vscode-languageserver-protocol"
 import {ChangeSpec, StateField, StateEffect} from "@codemirror/state"
 import {EditorView, Command, keymap, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
-import {lspPlugin} from "./plugin"
+import {LSPPlugin} from "./plugin"
 import {fromPos} from "./pos"
+
+function getRename(plugin: LSPPlugin, pos: number, newName: string) {
+  plugin.sync()
+  return plugin.client.mappedRequest<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
+    newName,
+    position: plugin.toPos(pos),
+    textDocument: {uri: plugin.uri},
+  })
+}
 
 export const renameSymbol: Command = view => {
   let word = view.state.wordAt(view.state.selection.main.head)
-  if (!word || !view.plugin(lspPlugin)) return false
+  if (!word || !LSPPlugin.get(view)) return false
   let panel = getPanel(view, createPromptDialog)
   if (!panel) {
     let effects: StateEffect<unknown>[] = [dialogEffect.of(view.state.sliceDoc(word.from, word.to))]
@@ -20,12 +30,12 @@ export const renameSymbol: Command = view => {
 }
 
 function runRename(view: EditorView, newName: string) {
-  const plugin = view.plugin(lspPlugin)
+  const plugin = LSPPlugin.get(view)
   let word = view.state.wordAt(view.state.selection.main.head)
   if (!plugin || !word) return false
 
   let startDoc = view.state.doc
-  plugin.client.rename(view, word.from, newName).then(({response, mapping}) => {
+  getRename(plugin, word.from, newName).then(({response, mapping}) => {
     if (!response) return
     let handler = plugin.client.config.handleChangeInFile
     uris: for (let uri in response.changes) {

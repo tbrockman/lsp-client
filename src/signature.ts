@@ -1,8 +1,16 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {StateField, StateEffect, Prec, Extension} from "@codemirror/state"
 import {EditorView, ViewPlugin, ViewUpdate, keymap, Tooltip, showTooltip, Command} from "@codemirror/view"
-import {LSPClient} from "./client"
-import {lspPlugin} from "./plugin"
+import {LSPPlugin} from "./plugin"
+
+function getSignatureHelp(plugin: LSPPlugin, pos: number, context: lsp.SignatureHelpContext) {
+  plugin.sync()
+  return plugin.client.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
+    context,
+    position: plugin.toPos(pos),
+    textDocument: {uri: plugin.uri},
+  })
+}
 
 const signaturePlugin = ViewPlugin.fromClass(class {
   activeRequest: {pos: number, drop: boolean} | null = null
@@ -18,14 +26,14 @@ const signaturePlugin = ViewPlugin.fromClass(class {
       }
     }
 
-    const plugin = update.view.plugin(lspPlugin)
+    const plugin = LSPPlugin.get(update.view)
     if (!plugin) return
     const sigState = update.view.state.field(signatureState)
     if (sigState) {
       if (update.selectionSet) {
         if (this.delayedRequest) clearTimeout(this.delayedRequest)
         this.delayedRequest = setTimeout(() => {
-          this.startRequest(plugin.client, update.view, {
+          this.startRequest(plugin, {
             triggerKind: 3 /* ContentChange */,
             isRetrigger: true,
             activeSignatureHelp: sigState.data,
@@ -42,7 +50,7 @@ const signaturePlugin = ViewPlugin.fromClass(class {
             if (ins.indexOf(ch) > -1) triggered = ch
           }
         })
-        if (triggered) this.startRequest(plugin.client, update.view, {
+        if (triggered) this.startRequest(plugin, {
           triggerKind: 2 /* TriggerCharacter */,
           isRetrigger: false,
           triggerCharacter: triggered,
@@ -51,12 +59,12 @@ const signaturePlugin = ViewPlugin.fromClass(class {
     }
   }
 
-  startRequest(client: LSPClient, view: EditorView, context: lsp.SignatureHelpContext) {
+  startRequest(plugin: LSPPlugin, context: lsp.SignatureHelpContext) {
     if (this.delayedRequest) clearTimeout(this.delayedRequest)
-    let pos = view.state.selection.main.head
+    let {view} = plugin, pos = view.state.selection.main.head
     if (this.activeRequest) this.activeRequest.drop = true
     let req = this.activeRequest = {pos, drop: false}
-    client.signatureHelp(view, pos, context).then(result => {
+    getSignatureHelp(plugin, pos, context).then(result => {
       if (req.drop) return
       if (result && result.signatures.length) {
         let cur = view.state.field(signatureState)
@@ -161,11 +169,11 @@ function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active:
     sig.textContent = signature.label
   }
   if (signature.documentation) {
-    let plugin = view.plugin(lspPlugin)
+    let plugin = LSPPlugin.get(view)
     if (plugin) {
       let docs = dom.appendChild(document.createElement("div"))
       docs.className = "cm-lsp-signature-documentation cm-lsp-documentation"
-      docs.innerHTML = plugin.client.docToHTML(view, signature.documentation)
+      docs.innerHTML = plugin.docToHTML(signature.documentation)
     }
   }
   return {dom}
@@ -175,9 +183,9 @@ export const showSignatureHelp: Command = view => {
   let plugin = view.plugin(signaturePlugin)
   let field = view.state.field(signatureState)
   if (!plugin || field === undefined) return false
-  let client = view.plugin(lspPlugin)?.client
-  if (!client) return false
-  plugin.startRequest(client, view, {
+  let lspPlugin = LSPPlugin.get(view)
+  if (!lspPlugin) return false
+  plugin.startRequest(lspPlugin, {
     triggerKind: 1 /* Invoked */,
     activeSignatureHelp: field ? field.data : undefined,
     isRetrigger: !!field
