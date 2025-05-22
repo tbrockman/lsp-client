@@ -15,7 +15,8 @@ class Request<Result> {
   mapBase: readonly lsp.VersionedTextDocumentIdentifier[] | null = null
 
   constructor(
-    readonly id: number
+    readonly id: number,
+    readonly params: any
   ) {
     this.promise = new Promise((resolve, reject) => {
       this.resolve = resolve
@@ -312,13 +313,13 @@ export class LSPClient {
       method,
       params: params as any
     }
-    let req = new Request<Result>(id)
+    let req = new Request<Result>(id, params)
     this.requests.push(req)
     this.transport!.send(JSON.stringify(data))
     return req
   }
 
-  /// @internal
+  /// Send a notification to the server.
   notification<Params>(method: string, params: Params) {
     if (!this.transport) return
     this.initializing.then(() => {
@@ -329,6 +330,13 @@ export class LSPClient {
       }
       this.transport!.send(JSON.stringify(data))
     })
+  }
+
+  /// Cancel the in-progress request with the given parameter value
+  /// (which is compared by identity).
+  cancelRequest(params: any) {
+    let found = this.requests.find(r => r.params === params)
+    if (found) this.notification("$/cancelRequest", found.id)
   }
 
   /// @internal

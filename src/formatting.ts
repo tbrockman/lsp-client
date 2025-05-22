@@ -40,6 +40,8 @@ export const formatDocument: Command = view => {
       changes,
       userEvent: "format"
     })
+  }, err => {
+    plugin.reportError("Formatting request failed", err)
   })
   return true
 }

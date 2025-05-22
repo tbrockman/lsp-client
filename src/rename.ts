@@ -82,6 +82,8 @@ function doRename(view: EditorView, newName: string) {
         userEvent: "rename"
       })
     }
+  }, err => {
+    plugin.reportError("Rename request failed", err)
   })
 }
 

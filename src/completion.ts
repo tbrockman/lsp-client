@@ -21,13 +21,16 @@ export function serverCompletion(config: {
   }
 }
 
-function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionContext) {
+function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionContext, abort?: CompletionContext) {
   plugin.sync()
-  return plugin.client.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>("textDocument/completion", {
+  let params: lsp.CompletionParams = {
     position: plugin.toPos(pos),
     textDocument: {uri: plugin.uri},
     context
-  })
+  }
+  if (abort) abort.addEventListener("abort", () => plugin.client.cancelRequest(params))
+  return plugin.client.request<lsp.CompletionParams, lsp.CompletionItem[] | lsp.CompletionList | null>(
+    "textDocument/completion", params)
 }
 
 // Look for non-alphanumeric prefixes in the completions, and return a
@@ -61,7 +64,7 @@ export const serverCompletionSource: CompletionSource = context => {
   return getCompletions(plugin, context.pos, {
     triggerCharacter: triggerChar,
     triggerKind: context.explicit ? 1 /* Invoked */ : 2 /* TriggerCharacter */
-  }).then(result => {
+  }, context).then(result => {
     if (!result) return null
     if (Array.isArray(result)) result = {items: result} as lsp.CompletionList
     let {from, to} = completionResultRange(context, result)
@@ -86,6 +89,10 @@ export const serverCompletionSource: CompletionSource = context => {
       validFor: prefixRegexp(result.items),
       map: (result, changes) => ({...result, from: changes.mapPos(result.from)}),
     }
+  }, err => {
+    if ("code" in err && (err as lsp.ResponseError).code == -32800 /* RequestCancelled */)
+      return null
+    throw err
   })
 }
 

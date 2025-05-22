@@ -84,7 +84,7 @@ const signaturePlugin = ViewPlugin.fromClass(class {
       } else if (view.state.field(signatureState)) {
         view.dispatch({effects: signatureEffect.of(null)})
       }
-    })
+    }, context.triggerKind == 1 /* Invoked */ ? err => plugin.reportError("Signature request failed", err) : undefined)
   }
 
   destroy() {

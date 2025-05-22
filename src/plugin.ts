@@ -1,5 +1,5 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, showDialog} from "@codemirror/view"
 import {ChangeSet, Text, Extension} from "@codemirror/state"
 import {language} from "@codemirror/language"
 import {type LSPClient} from "./client"
@@ -56,6 +56,14 @@ export class LSPPlugin {
   /// document offset.
   fromPos(pos: lsp.Position, doc: Text = this.view.state.doc) {
     return fromPos(doc, pos)
+  }
+
+  reportError(message: any, err: any) {
+    showDialog(this.view, {
+      label: this.view.state.phrase(message) + ": " + (err.message || err),
+      class: "cm-lsp-message cm-lsp-message-error",
+      top: true
+    })
   }
 
   /// @internal
