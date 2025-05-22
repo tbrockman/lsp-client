@@ -5,8 +5,6 @@ import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin"
 import {toPos} from "./pos"
 
-// FIXME go over error routing
-
 class Request<Result> {
   declare resolve: (result: Result) => void
   declare reject: (error: any) => void
@@ -115,7 +113,8 @@ class WorkspaceMapping {
 /// layer you use to talk to your language server. Messages should
 /// contain only the JSON messages, no LSP headers.
 export type Transport = {
-  /// Send a message to the server.
+  /// Send a message to the server. Should throw if the connection is
+  /// broken somehow.
   send(message: string): void
   /// Register a handler for messages coming from the server.
   subscribe(handler: (value: string) => void): void
@@ -141,6 +140,9 @@ const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params
 
 /// Configuration options that can be passed to the LSP client.
 export type LSPClientConfig = {
+  /// The amount of milliseconds after which requests are
+  /// automatically timed out. Defaults to 3000.
+  timeout?: number
   /// LSP servers can send Markdown code, which the client must render
   /// and display as HTML. Markdown can contain arbitrary HTML and is
   /// thus a potential channel for cross-site scripting attacks, if
@@ -189,11 +191,14 @@ export class LSPClient {
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
   declare private init: {resolve: (value: null) => void, reject: (err: any) => void}
+  private timeoutWorker = 0
+  private timeout: number
 
   /// Create a client object.
   constructor(readonly config: LSPClientConfig = {}) {
     this.receiveMessage = this.receiveMessage.bind(this)
     this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
+    this.timeout = config.timeout ?? 3000
   }
 
   /// Connect this client to a server over the given transport. Will
@@ -290,9 +295,10 @@ export class LSPClient {
     response: Result,
     mapping: WorkspaceMapping
   }> {
+    let mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
     return this.initializing.then(() => {
       let req = this.requestInner<Params, Result>(method, params, true)
-      req.mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
+      req.mapBase = mapBase
       return req.promise.then(response => {
         let mapping = new WorkspaceMapping(this, req.mapBase!)
         this.cleanMapping()
@@ -315,7 +321,9 @@ export class LSPClient {
     }
     let req = new Request<Result>(id, params)
     this.requests.push(req)
-    this.transport!.send(JSON.stringify(data))
+    if (this.timeoutWorker == 0) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), this.timeout)
+    try { this.transport!.send(JSON.stringify(data)) }
+    catch(e) { req.reject(e) }
     return req
   }
 
@@ -413,6 +421,22 @@ export class LSPClient {
       let minVer = oldest.get(file.uri)
       if (file.history.length) file.history = minVer == null ? [] : file.history.filter(s => s.syncedVersion >= minVer!)
     }
+  }
+
+  private timeoutRequests() {
+    this.timeoutWorker = 0
+    let now = Date.now(), next = -1
+    for (let i = 0; i < this.requests.length; i++) {
+      let req = this.requests[i]
+      if (req.started + this.timeout <= now) {
+        req.reject(new Error("Request timed out"))
+        this.requests.splice(i--, 1)
+      } else {
+        let end = req.started + this.timeout
+        next = next < 0 ? end : Math.min(next, end)
+      }
+    }
+    if (next > -1) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), next - now)
   }
 }
 
