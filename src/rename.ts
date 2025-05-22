@@ -1,7 +1,6 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {ChangeSpec, StateField, StateEffect} from "@codemirror/state"
-import {EditorView, Command, KeyBinding, Panel, getPanel, showPanel} from "@codemirror/view"
-import elt from "crelt"
+import {ChangeSpec} from "@codemirror/state"
+import {EditorView, Command, KeyBinding, showDialog, getDialog} from "@codemirror/view"
 import {LSPPlugin} from "./plugin"
 import {fromPos} from "./pos"
 
@@ -23,21 +22,30 @@ function getRename(plugin: LSPPlugin, pos: number, newName: string) {
 /// [`handleChangeInFile`](#lsp-client.LSPClientConfig.handleChangeInFile)
 /// option.
 export const renameSymbol: Command = view => {
-  let word = view.state.wordAt(view.state.selection.main.head)
-  if (!word || !LSPPlugin.get(view)) return false
-  let panel = getPanel(view, createPromptDialog)
-  if (!panel) {
-    let effects: StateEffect<unknown>[] = [dialogEffect.of(view.state.sliceDoc(word.from, word.to))]
-    if (view.state.field(dialogField, false) == null)
-      effects.push(StateEffect.appendConfig.of(dialogField))
-    view.dispatch({effects})
-    panel = getPanel(view, createPromptDialog)
+  let wordRange = view.state.wordAt(view.state.selection.main.head)
+  if (!wordRange || !LSPPlugin.get(view)) return false
+  let word = view.state.sliceDoc(wordRange.from, wordRange.to)
+  let panel = getDialog(view, "cm-lsp-rename-panel")
+  if (panel) {
+    let input = panel.dom.querySelector("[name=name]") as HTMLInputElement
+    input.value = word
+    input.select()
+  } else {
+    let {close, result} = showDialog(view, {
+      label: view.state.phrase("New name"),
+      input: {name: "name", value: word},
+      submitLabel: view.state.phrase("rename"),
+      class: "cm-lsp-rename-panel",
+    })
+    result.then(form => {
+      view.dispatch({effects: close})
+      if (form) doRename(view, (form.elements.namedItem("name") as HTMLInputElement).value)
+    })
   }
-  if (panel) panel.dom.querySelector("input")!.select()
   return true
 }
 
-function runRename(view: EditorView, newName: string) {
+function doRename(view: EditorView, newName: string) {
   const plugin = LSPPlugin.get(view)
   let word = view.state.wordAt(view.state.selection.main.head)
   if (!plugin || !word) return false
@@ -75,52 +83,6 @@ function runRename(view: EditorView, newName: string) {
     }
   })
 }
-
-// FIXME create a utility for this in @codemirror/view
-function createPromptDialog(view: EditorView): Panel {
-  let input = elt("input", {class: "cm-textfield", name: "name", value: view.state.field(dialogField)}) as HTMLInputElement
-  let dom = elt("form", {
-    class: "cm-rename-prompt",
-    onkeydown: (event: KeyboardEvent) => {
-      if (event.keyCode == 27) { // Escape
-        event.preventDefault()
-        done()
-      } else if (event.keyCode == 13) { // Enter
-        event.preventDefault()
-        done(input.value)
-      }
-    },
-    onsubmit: (event: Event) => {
-      event.preventDefault()
-      done(input.value)
-    }
-  }, elt("label", view.state.phrase("New name"), ": ", input), " ",
-     elt("button", {class: "cm-button", type: "submit"}, view.state.phrase("rename")),
-     elt("button", {
-       name: "close",
-       onclick: () => done(),
-       "aria-label": view.state.phrase("close"),
-       type: "button"
-     }, ["×"]))
-
-  function done(value?: string) {
-    view.dispatch({effects: dialogEffect.of(null)})
-    view.focus()
-    if (value) runRename(view, value)
-  }
-  return {dom}
-}
-
-const dialogEffect = StateEffect.define<string | null>()
-
-const dialogField = StateField.define<string | null>({
-  create() { return null },
-  update(value, tr) {
-    for (let e of tr.effects) if (e.is(dialogEffect)) value = e.value
-    return value
-  },
-  provide: f => showPanel.from(f, val => val != null ? createPromptDialog : null)
-})
 
 /// A keymap that binds F2 to [`renameSymbol`](#lsp-server.renameSymbol).
 export const renameKeymap: readonly KeyBinding[] = [

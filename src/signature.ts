@@ -183,6 +183,7 @@ function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active:
 /// Explicitly prompt the server to provide signature help at the
 /// cursor.
 export const showSignatureHelp: Command = view => {
+  // FIXME enable the plugin and field on demand?
   let plugin = view.plugin(signaturePlugin)
   let field = view.state.field(signatureState)
   if (!plugin || field === undefined) return false

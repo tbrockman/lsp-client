@@ -38,7 +38,7 @@ export const lspTheme = EditorView.baseTheme({
     paddingLeft: "1.5em"
   },
 
-  ".cm-panel.cm-rename-prompt": {
+  ".cm-panel.cm-lsp-rename-panel": {
     padding: "2px 6px 4px",
     position: "relative",
     "& label": { fontSize: "80%" },
