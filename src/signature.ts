@@ -5,6 +5,7 @@ import {EditorView, ViewPlugin, ViewUpdate, keymap, KeyBinding,
 import {LSPPlugin} from "./plugin"
 
 function getSignatureHelp(plugin: LSPPlugin, pos: number, context: lsp.SignatureHelpContext) {
+  if (plugin.client.hasCapability("signatureHelpProvider") === false) return Promise.resolve(null)
   plugin.sync()
   return plugin.client.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
     context,

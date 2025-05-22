@@ -22,6 +22,7 @@ export function serverCompletion(config: {
 }
 
 function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionContext, abort?: CompletionContext) {
+  if (plugin.client.hasCapability("completionProvider") === false) return Promise.resolve(null)
   plugin.sync()
   let params: lsp.CompletionParams = {
     position: plugin.toPos(pos),
@@ -58,7 +59,7 @@ export const serverCompletionSource: CompletionSource = context => {
   let triggerChar = ""
   if (!context.explicit) {
     triggerChar = context.view.state.sliceDoc(context.pos - 1, context.pos)
-    let triggers = plugin.client.serverCapabilities.completionProvider?.triggerCharacters
+    let triggers = plugin.client.serverCapabilities?.completionProvider?.triggerCharacters
     if (!/[a-zA-Z_]/.test(triggerChar) && !(triggers && triggers.indexOf(triggerChar) > -1)) return null
   }
   return getCompletions(plugin, context.pos, {

@@ -75,6 +75,7 @@ class WorkspaceMapping {
 
   /// @internal
   constructor(client: LSPClient, base: readonly lsp.VersionedTextDocumentIdentifier[]) {
+    // FIXME clean this up, maybe allow direct conversion of old-doc Position objects
     for (let {uri, version} of base) {
       let file = client.getOpenFile(uri)
       if (!file) continue
@@ -184,9 +185,9 @@ export class LSPClient {
   private requests: Request<any>[] = []
   /// @internal
   openFiles: OpenFile[] = []
-  /// The capabilities advertised by the server. Will be the empty
-  /// object when not connected.
-  serverCapabilities: lsp.ServerCapabilities = {}
+  /// The capabilities advertised by the server. Will be null when not
+  /// connected or initialized.
+  serverCapabilities: lsp.ServerCapabilities | null = null
   /// A promise that resolves the client is connected. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
@@ -236,7 +237,7 @@ export class LSPClient {
   /// Disconnect the client from the server.
   disconnect() {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
-    this.serverCapabilities = {}
+    this.serverCapabilities = null
     this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
   }
 
@@ -345,6 +346,13 @@ export class LSPClient {
   cancelRequest(params: any) {
     let found = this.requests.find(r => r.params === params)
     if (found) this.notification("$/cancelRequest", found.id)
+  }
+
+  /// Check whether the server has a given property in its capability
+  /// object. Returns null when the connection hasn't finished
+  /// initializing yet.
+  hasCapability(name: keyof lsp.ServerCapabilities) {
+    return this.serverCapabilities ? !!this.serverCapabilities[name] : null
   }
 
   /// @internal

@@ -23,7 +23,8 @@ function getRename(plugin: LSPPlugin, pos: number, newName: string) {
 /// option.
 export const renameSymbol: Command = view => {
   let wordRange = view.state.wordAt(view.state.selection.main.head)
-  if (!wordRange || !LSPPlugin.get(view)) return false
+  let plugin = LSPPlugin.get(view)
+  if (!wordRange || !plugin || plugin.client.hasCapability("renameProvider") === false) return false
   let word = view.state.sliceDoc(wordRange.from, wordRange.to)
   let panel = getDialog(view, "cm-lsp-rename-panel")
   if (panel) {

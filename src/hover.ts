@@ -17,6 +17,7 @@ export function hoverTooltips(): Extension {
 }
 
 function hoverRequest(plugin: LSPPlugin, pos: number) {
+  if (plugin.client.hasCapability("hoverProvider") === false) return Promise.resolve(null)
   plugin.sync()
   return plugin.client.request<lsp.HoverParams, lsp.Hover | null>("textDocument/hover", {
     position: plugin.toPos(pos),
