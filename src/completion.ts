@@ -30,6 +30,21 @@ function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionC
   })
 }
 
+// Look for non-alphanumeric prefixes in the completions, and return a
+// regexp that matches them, to use in validFor
+function prefixRegexp(items: readonly lsp.CompletionItem[]) {
+  let step = Math.ceil(items.length / 50), prefixes: string[] = []
+  for (let i = 0; i < items.length; i += step) {
+    let item = items[i], text = item.textEdit?.newText || item.textEditText || item.insertText || item.label
+    if (!/^\w/.test(text)) {
+      let prefix = /^[^\w]*/.exec(text)![0]
+      if (prefixes.indexOf(prefix) < 0) prefixes.push(prefix)
+    }
+  }
+  if (!prefixes.length) return /^\w*$/
+  return new RegExp("^(?:" + prefixes.map((RegExp as any).escape || (s => s.replace(/[^\w\s]/g, "\\$&"))).join("|") + ")?\w*$")
+}
+
 /// A completion source that requests completions from a language
 /// server. Only works when [server
 /// support](#lsp-server.languageServerSupport) is active in the
@@ -63,13 +78,12 @@ export const serverCompletionSource: CompletionSource = context => {
         if (item.commitCharacters && item.commitCharacters != defaultCommitChars)
           option.commitCharacters = item.commitCharacters
         if (item.detail) option.detail = item.detail
-        // FIXME compare allowed syntax. catch errors
         if (item.insertTextFormat == 2 /* Snippet */) option.apply = (view, c, from, to) => snippet(text)(view, c, from, to)
         if (item.documentation) option.info = () => renderDocInfo(plugin, item.documentation!)
         return option
       }),
       commitCharacters: defaultCommitChars,
-      validFor: /^\.?\w*$/, // FIXME
+      validFor: prefixRegexp(result.items),
       map: (result, changes) => ({...result, from: changes.mapPos(result.from)}),
     }
   })
