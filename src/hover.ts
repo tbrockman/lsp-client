@@ -7,6 +7,9 @@ import {fromPos} from "./pos"
 import {escHTML} from "./text"
 import {LSPPlugin} from "./plugin"
 
+/// Create an extension that queries the language server for hover
+/// tooltips when the user hovers over the code with their pointer,
+/// and displays a tooltip when the server provides one.
 export function hoverTooltips(): Extension {
   return hoverTooltip(lspTooltipSource, {
     hideOn: tr => tr.docChanged

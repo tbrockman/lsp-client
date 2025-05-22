@@ -1,15 +1,11 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView, ViewPlugin, ViewUpdate} from "@codemirror/view"
-import {ChangeSet, EditorState, Text} from "@codemirror/state"
+import {ChangeSet, Text, Extension} from "@codemirror/state"
 import {language} from "@codemirror/language"
 import {type LSPClient} from "./client"
 import {docToHTML, withContext} from "./text"
 import {toPos, fromPos} from "./pos"
-
-function languageID(state: EditorState) {
-  let lang = state.facet(language)
-  return lang ? lang.name : ""
-}
+import {lspTheme} from "./theme"
 
 export class FileState {
   constructor(
@@ -24,13 +20,21 @@ export class LSPPlugin {
   /// @internal
   fileState: FileState
 
-  constructor(readonly view: EditorView, {client, uri}: {client: LSPClient, uri: string}) {
+  constructor(readonly view: EditorView, {client, uri, languageID}: {client: LSPClient, uri: string, languageID?: string}) {
     this.client = client
     this.uri = uri
-    this.fileState = new FileState(client.registerUser(uri, languageID(view.state), view),
+    if (!languageID) {
+      let lang = view.state.facet(language)
+      languageID = lang ? lang.name : ""
+    }
+    this.fileState = new FileState(client.registerUser(uri, languageID, view),
                                    ChangeSet.empty(view.state.doc.length))
   }
 
+  /// Notify the server of any local changes that have been made to
+  /// open documents. You'll want to call this before most types of
+  /// requests, to make sure the server isn't working with outdated
+  /// information.
   sync() {
     this.client.sync(this.view)
   }
@@ -54,18 +58,34 @@ export class LSPPlugin {
     return fromPos(doc, pos)
   }
 
+  /// @internal
   update(update: ViewUpdate) {
     if (!update.changes.empty)
       this.fileState = new FileState(this.fileState.syncedVersion,
                                      this.fileState.changes.compose(update.changes))
   }
 
+  /// @internal
   destroy() {
     this.client.unregisterUser(this.uri, this.view)
   }
 
+  /// Get the LSP plugin associated with an editor, if any.
   static get(view: EditorView) {
     return view.plugin(lspPlugin)
+  }
+
+  /// Create an editor extension that connects that editor to the given
+  /// LSP client. This will cause the client to consider the given
+  /// URI/file to be open, and allow the editor to use LSP-related
+  /// functionality exported by this package.
+  ///
+  /// By default, the language ID given to the server for this file is
+  /// derived from the editor's language configuration via
+  /// [`Language.name`](#language.Language.name). You can pass in
+  /// a specific ID as a third parameter.
+  static create(client: LSPClient, fileURI: string, languageID?: string): Extension {
+    return [lspPlugin.of({client, uri: fileURI, languageID}), lspTheme]
   }
 }
 

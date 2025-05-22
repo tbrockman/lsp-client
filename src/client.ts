@@ -1,10 +1,9 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {EditorView} from "@codemirror/view"
-import {ChangeSet, ChangeDesc, MapMode, Extension, Text} from "@codemirror/state"
+import {ChangeSet, ChangeDesc, MapMode, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin"
 import {toPos} from "./pos"
-import {lspTheme} from "./theme"
 
 // FIXME go over error routing
 
@@ -183,12 +182,12 @@ export class LSPClient {
   /// A promise that resolves the client is connected. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
-  declare private initialized: () => void
+  declare private init: {resolve: (value: null) => void, reject: (err: any) => void}
 
   /// Create a client object.
   constructor(readonly config: LSPClientConfig = {}) {
     this.receiveMessage = this.receiveMessage.bind(this)
-    this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
+    this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
   }
 
   /// Connect this client to a server over the given transport. Will
@@ -207,9 +206,8 @@ export class LSPClient {
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
       this.notification<lsp.InitializedParams>("initialized", {})
-      this.initialized()
-      // FIXME somehow reject this.initializing when connecting fails?
-    })
+      this.init.resolve(null)
+    }, this.init.reject)
     for (let file of this.openFiles) {
       let editor = this.mainEditor(file.uri)!
       this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
@@ -228,7 +226,7 @@ export class LSPClient {
   disconnect() {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
     this.serverCapabilities = {}
-    this.initializing = new Promise(resolve => this.initialized = () => resolve(null))
+    this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
   }
 
   private receiveMessage(msg: string) {
@@ -366,6 +364,7 @@ export class LSPClient {
     return open.using[0]
   }
 
+  /// @internal
   sync(editor?: EditorView) {
     for (let file of this.openFiles) {
       let main = this.mainEditor(file.uri, editor)!
@@ -397,14 +396,6 @@ export class LSPClient {
       if (file.history.length) file.history = minVer == null ? [] : file.history.filter(s => s.syncedVersion >= minVer!)
     }
   }
-}
-
-/// Create an editor extension that connects that editor to the given
-/// LSP client. This will cause the client to consider the given
-/// URI/file to be open, and allow the editor to use LSP-related
-/// functionality exported by this package.
-export function languageServerSupport(client: LSPClient, fileURI: string): Extension {
-  return [lspPlugin.of({client, uri: fileURI}), lspTheme]
 }
 
 const enum Sync { AlwaysIfSmaller = 1024 }

@@ -1,6 +1,7 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {StateField, StateEffect, Prec, Extension} from "@codemirror/state"
-import {EditorView, ViewPlugin, ViewUpdate, keymap, Tooltip, showTooltip, Command} from "@codemirror/view"
+import {EditorView, ViewPlugin, ViewUpdate, keymap, KeyBinding,
+        Tooltip, showTooltip, Command} from "@codemirror/view"
 import {LSPPlugin} from "./plugin"
 
 function getSignatureHelp(plugin: LSPPlugin, pos: number, context: lsp.SignatureHelpContext) {
@@ -179,6 +180,8 @@ function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active:
   return {dom}
 }
 
+/// Explicitly prompt the server to provide signature help at the
+/// cursor.
 export const showSignatureHelp: Command = view => {
   let plugin = view.plugin(signaturePlugin)
   let field = view.state.field(signatureState)
@@ -193,28 +196,53 @@ export const showSignatureHelp: Command = view => {
   return true
 }
 
-export const lspNextSignature: Command = view => {
+/// If there is an active signature tooltip with multiple signatures,
+/// move to the next one.
+export const nextSignature: Command = view => {
   let field = view.state.field(signatureState)
-  if (!field || field.active == field.data.signatures.length - 1) return false
-  view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active + 1, pos: field.tooltip.pos})})
+  if (!field) return false
+  if (field.active < field.data.signatures.length - 1)
+    view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active + 1, pos: field.tooltip.pos})})
   return true
 }
 
-export const lspPrevSignature: Command = view => {
+/// If there is an active signature tooltip with multiple signatures,
+/// move to the previous signature.
+export const prevSignature: Command = view => {
   let field = view.state.field(signatureState)
-  if (!field || field.active == 0) return false
-  view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active - 1, pos: field.tooltip.pos})})
+  if (!field) return false
+  if (field.active > 0)
+    view.dispatch({effects: signatureEffect.of({data: field.data, active: field.active - 1, pos: field.tooltip.pos})})
   return true
 }
 
-export function signatureHelp(): Extension {
+/// A keymap that binds
+///
+/// - Ctrl-Shift-Space (Cmd-Shift-Space on macOS) to
+///   [`showSignatureHelp`](#lsp-client.showSignatureHelp)
+///
+/// - Ctrl-Shift-ArrowUp (Cmd-Shift-ArrowUp on macOS) to
+///   [`prevSignature`](#lsp-client.prevSignature)
+///
+/// - Ctrl-Shift-ArrowDown (Cmd-Shift-ArrowDown on macOS) to
+///   [`nextSignature`](#lsp-client.nextSignature)
+///
+/// Note that these keys are automatically bound by
+/// [`signatureHelp`](#lsp-client.signatureHelp) unless you pass it
+/// `keymap: false`.
+export const signatureKeymap: readonly KeyBinding[] = [
+  {key: "Mod-Shift-Space", run: showSignatureHelp},
+  {key: "Mod-Shift-ArrowUp", run: prevSignature},
+  {key: "Mod-Shift-ArrowDown", run: nextSignature},
+]
+
+/// Returns an extension that enables signature help. Will bind the
+/// keys in [`signatureKeymap`](#lsp-client.signatureKeymap) unless
+/// `keymap` is set to `false`.
+export function signatureHelp(config: {keymap?: boolean} = {}): Extension {
   return [
     signatureState,
     signaturePlugin,
-    Prec.high(keymap.of([
-      {key: "Mod-Shift-Space", run: showSignatureHelp},
-      {key: "Mod-Shift-ArrowUp", run: lspPrevSignature},
-      {key: "Mod-Shift-ArrowDown", run: lspNextSignature},
-    ]))
+    config.keymap === false ? [] : Prec.high(keymap.of(signatureKeymap))
   ]
 }

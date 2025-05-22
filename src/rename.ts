@@ -1,6 +1,6 @@
 import type * as lsp from "vscode-languageserver-protocol"
 import {ChangeSpec, StateField, StateEffect} from "@codemirror/state"
-import {EditorView, Command, keymap, Panel, getPanel, showPanel} from "@codemirror/view"
+import {EditorView, Command, KeyBinding, Panel, getPanel, showPanel} from "@codemirror/view"
 import elt from "crelt"
 import {LSPPlugin} from "./plugin"
 import {fromPos} from "./pos"
@@ -14,6 +14,14 @@ function getRename(plugin: LSPPlugin, pos: number, newName: string) {
   })
 }
 
+/// This command will, if the cursor is over a word, prompt the user
+/// for a new name for that symbol, and ask the language server to
+/// perform a rename of that symbol.
+///
+/// Note that this may affect files other than the one loaded into
+/// this view. See the
+/// [`handleChangeInFile`](#lsp-client.LSPClientConfig.handleChangeInFile)
+/// option.
 export const renameSymbol: Command = view => {
   let word = view.state.wordAt(view.state.selection.main.head)
   if (!word || !LSPPlugin.get(view)) return false
@@ -114,6 +122,7 @@ const dialogField = StateField.define<string | null>({
   provide: f => showPanel.from(f, val => val != null ? createPromptDialog : null)
 })
 
-export const renameKeymap = keymap.of([
+/// A keymap that binds F2 to [`renameSymbol`](#lsp-server.renameSymbol).
+export const renameKeymap: readonly KeyBinding[] = [
   {key: "F2", run: renameSymbol, preventDefault: true}
-])
+]

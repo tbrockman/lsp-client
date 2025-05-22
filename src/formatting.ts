@@ -1,5 +1,5 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {Command, keymap} from "@codemirror/view"
+import {Command, KeyBinding} from "@codemirror/view"
 import {ChangeSpec} from "@codemirror/state"
 import {indentUnit, getIndentUnit} from "@codemirror/language"
 import {LSPPlugin} from "./plugin"
@@ -13,6 +13,8 @@ function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
   })
 }
 
+/// This command asks the language server to reformat the document,
+/// and then applies the changes it returns.
 export const formatDocument: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin) return false
@@ -42,6 +44,8 @@ export const formatDocument: Command = view => {
   return true
 }
 
-export const formatKeymap = keymap.of([
+/// A keymap that binds Shift-Alt-f to
+/// [`formatDocument`](#lsp-server.formatDocument).
+export const formatKeymap: readonly KeyBinding[] = [
   {key: "Shift-Alt-f", run: formatDocument, preventDefault: true}
-])
+]

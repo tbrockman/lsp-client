@@ -2,7 +2,10 @@ import {EditorView} from "@codemirror/view"
 
 export const lspTheme = EditorView.baseTheme({
   ".cm-lsp-documentation": {
-    padding: "0 7px"
+    padding: "0 7px",
+    "& p, & pre": {
+      margin: "2px 0"
+    }
   },
 
   ".cm-lsp-signature-tooltip": {
