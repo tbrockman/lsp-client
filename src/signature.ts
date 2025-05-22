@@ -30,33 +30,36 @@ const signaturePlugin = ViewPlugin.fromClass(class {
     const plugin = LSPPlugin.get(update.view)
     if (!plugin) return
     const sigState = update.view.state.field(signatureState)
-    if (sigState) {
-      if (update.selectionSet) {
-        if (this.delayedRequest) clearTimeout(this.delayedRequest)
-        this.delayedRequest = setTimeout(() => {
-          this.startRequest(plugin, {
-            triggerKind: 3 /* ContentChange */,
-            isRetrigger: true,
-            activeSignatureHelp: sigState.data,
-          })
-        }, 250)
-      }
-    } else if (update.docChanged && update.transactions.some(tr => tr.isUserEvent("input.type"))) {
+    let triggerCharacter = ""
+    if (update.docChanged && update.transactions.some(tr => tr.isUserEvent("input.type"))) {
       const serverConf = plugin.client.serverCapabilities?.signatureHelpProvider
-      if (serverConf && serverConf.triggerCharacters) {
-        let triggered: string | undefined
+      const triggers = (serverConf?.triggerCharacters || []).concat(sigState && serverConf?.retriggerCharacters || [])
+      if (triggers) {
         update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
           let ins = inserted.toString()
-          if (ins) for (let ch of serverConf.triggerCharacters!) {
-            if (ins.indexOf(ch) > -1) triggered = ch
+          if (ins) for (let ch of triggers) {
+            if (ins.indexOf(ch) > -1) triggerCharacter = ch
           }
         })
-        if (triggered) this.startRequest(plugin, {
-          triggerKind: 2 /* TriggerCharacter */,
-          isRetrigger: false,
-          triggerCharacter: triggered,
-        })
       }
+    }
+
+    if (triggerCharacter) {
+      this.startRequest(plugin, {
+        triggerKind: 2 /* TriggerCharacter */,
+        isRetrigger: !!sigState,
+        triggerCharacter,
+        activeSignatureHelp: sigState ? sigState.data : undefined
+      })
+    } else if (sigState && update.selectionSet) {
+      if (this.delayedRequest) clearTimeout(this.delayedRequest)
+      this.delayedRequest = setTimeout(() => {
+        this.startRequest(plugin, {
+          triggerKind: 3 /* ContentChange */,
+          isRetrigger: true,
+          activeSignatureHelp: sigState.data,
+        })
+      }, 250)
     }
   }
 
@@ -183,8 +186,11 @@ function drawSignatureTooltip(view: EditorView, data: lsp.SignatureHelp, active:
 /// Explicitly prompt the server to provide signature help at the
 /// cursor.
 export const showSignatureHelp: Command = view => {
-  // FIXME enable the plugin and field on demand?
   let plugin = view.plugin(signaturePlugin)
+  if (!plugin) {
+    view.dispatch({effects: StateEffect.appendConfig.of([signatureState, signaturePlugin])})
+    plugin = view.plugin(signaturePlugin)
+  }
   let field = view.state.field(signatureState)
   if (!plugin || field === undefined) return false
   let lspPlugin = LSPPlugin.get(view)
