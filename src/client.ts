@@ -10,7 +10,6 @@ class Request<Result> {
   declare reject: (error: any) => void
   started = Date.now()
   promise: Promise<Result>
-  mapBase: readonly lsp.VersionedTextDocumentIdentifier[] | null = null
 
   constructor(
     readonly id: number,
@@ -62,33 +61,43 @@ class OpenFile {
   version = 0
   using: EditorView[] = []
   requests: number[] = []
-  history: FileState[] = []
 
   constructor(readonly uri: string, readonly languageId: string) {}
+
+  mainEditor(active?: EditorView) {
+    let index
+    if (active && (index = this.using.indexOf(active)) > -1) {
+      if (index) [this.using[index], this.using[0]] = [this.using[0], this.using[index]]
+      return active
+    }
+    return this.using[0]
+  }
 }
 
 /// A workspace mapping is used to track changes made to open
 /// documents between the time a request is started and the time its
 /// result comes back.
 class WorkspaceMapping {
-  private mappings: Map<string, ChangeDesc> = new Map
+  // @internal
+  mappings: Map<string, {view: EditorView, start: Text, changes: ChangeDesc, version: number}> = new Map
 
   /// @internal
-  constructor(client: LSPClient, base: readonly lsp.VersionedTextDocumentIdentifier[]) {
-    // FIXME clean this up, maybe allow direct conversion of old-doc Position objects
-    for (let {uri, version} of base) {
-      let file = client.getOpenFile(uri)
-      if (!file) continue
-      let changes: ChangeDesc | null = null
-      for (let v = version; v < file.version; v++) {
-        let step = file.history.find(s => s.syncedVersion == v)
-        if (!step) throw new Error("No mapping available for file " + uri)
-        changes = changes ? changes.composeDesc(step.changes) : step.changes.desc
-      }
-      let main = client.mainEditor(uri), plugin = main && main.plugin(lspPlugin)
-      if (!plugin) continue
-      changes = changes ? changes.composeDesc(plugin.fileState.changes) : plugin.fileState.changes.desc
-      this.mappings.set(uri, changes)
+  constructor(client: LSPClient) {
+    for (let file of client.openFiles) {
+      let view = file.mainEditor()
+      if (view) this.mappings.set(file.uri, {
+        view,
+        start: view.state.doc,
+        changes: ChangeSet.empty(view.state.doc.length),
+        version: file.version
+      })
+    }
+  }
+
+  finish() {
+    for (let record of this.mappings.values()) {
+      let plugin = record.view.plugin(lspPlugin)
+      if (plugin) record.changes = record.changes.composeDesc(plugin.fileState.changes)
     }
   }
 
@@ -98,16 +107,19 @@ class WorkspaceMapping {
   mapPos(uri: string, pos: number): number
   mapPos(uri: string, pos: number, mode: MapMode): number | null
   mapPos(uri: string, pos: number, mode: MapMode = MapMode.Simple): number | null {
-    let mapping = this.mappings.get(uri)
-    return mapping ? mapping.mapPos(pos, mode) : pos
+    let record = this.mappings.get(uri)
+    return record ? record.changes.mapPos(pos, mode) : pos
   }
 
   /// Get the changes made to the document with the given URI during
   /// the request. Returns null for documents that weren't changed or
   /// aren't open.
   getMapping(uri: string) {
-    return this.mappings.get(uri)
+    let record = this.mappings.get(uri)
+    return record ? record.changes : null
   }
+
+  // FIXME maybe allow direct conversion of old-doc Position objects
 }
 
 /// An object of this type should be used to wrap whatever transport
@@ -183,6 +195,7 @@ export class LSPClient {
   transport: Transport | null = null
   private nextID = 0
   private requests: Request<any>[] = []
+  private activeMappings: WorkspaceMapping[] = []
   /// @internal
   openFiles: OpenFile[] = []
   /// The capabilities advertised by the server. Will be null when not
@@ -221,7 +234,7 @@ export class LSPClient {
       this.init.resolve(null)
     }, this.init.reject)
     for (let file of this.openFiles) {
-      let editor = this.mainEditor(file.uri)!
+      let editor = file.mainEditor()
       this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
         textDocument: {
           uri: file.uri,
@@ -296,15 +309,18 @@ export class LSPClient {
     response: Result,
     mapping: WorkspaceMapping
   }> {
-    let mapBase = this.openFiles.map(f => ({uri: f.uri, version: f.version}))
+    let mapping = new WorkspaceMapping(this)
+    this.activeMappings.push(mapping)
     return this.initializing.then(() => {
       let req = this.requestInner<Params, Result>(method, params, true)
-      req.mapBase = mapBase
       return req.promise.then(response => {
-        let mapping = new WorkspaceMapping(this, req.mapBase!)
-        this.cleanMapping()
+        this.activeMappings = this.activeMappings.filter(m => m != mapping)
+        mapping.finish()
         return {response, mapping}
       })
+    }).catch(e => {
+      this.activeMappings = this.activeMappings.filter(m => m != mapping)
+      throw e
     })
   }
 
@@ -322,7 +338,7 @@ export class LSPClient {
     }
     let req = new Request<Result>(id, params)
     this.requests.push(req)
-    if (this.timeoutWorker == 0) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), this.timeout)
+    if (this.timeoutWorker == 0) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), this.timeout + 10)
     try { this.transport!.send(JSON.stringify(data)) }
     catch(e) { req.reject(e) }
     return req
@@ -382,52 +398,37 @@ export class LSPClient {
     if (idx < 0) return
     open.using.splice(idx, 1)
     if (!open.using.length) {
-      this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
       this.openFiles = this.openFiles.filter(f => f != open)
+      this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
     }
-  }
-
-  /// @internal
-  mainEditor(uri: string, active?: EditorView) {
-    let open = this.getOpenFile(uri), index
-    if (!open) return null
-    if (active && (index = open.using.indexOf(active)) > -1) {
-      if (index) [open.using[index], open.using[0]] = [open.using[0], open.using[index]]
-      return active
-    }
-    return open.using[0]
   }
 
   /// @internal
   sync(editor?: EditorView) {
     for (let file of this.openFiles) {
-      let main = this.mainEditor(file.uri, editor)!
+      let main = file.mainEditor(editor)
       let plugin = main.plugin(lspPlugin)
       if (!plugin) continue
       let {fileState} = plugin
       if (!fileState.changes.empty || fileState.syncedVersion != file.version) {
+        for (let mapping of this.activeMappings) {
+          let record = mapping.mappings.get(file.uri)
+          if (record) {
+            if (record.version == file.version) {
+              record.changes = record.changes.composeDesc(fileState.changes)
+              record.version++
+            } else {
+              mapping.mappings.delete(file.uri)
+            }
+          }
+        }
         file.version++
-        if (this.requests.some(r => r.mapBase)) file.history.push(fileState)
         plugin.fileState = new FileState(file.version, ChangeSet.empty(main.state.doc.length))
         this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
           textDocument: {uri: file.uri, version: file.version},
           contentChanges: contentChangesFor(file, fileState, main.state.doc)
         })
       }
-    }
-  }
-
-  private cleanMapping() {
-    let oldest: Map<string, number> = new Map
-    for (let req of this.requests) if (req.mapBase) {
-      for (let {uri, version} of req.mapBase) {
-        let cur = oldest.get(uri)
-        oldest.set(uri, cur == null ? version : Math.min(version, cur))
-      }
-    }
-    if (oldest.size) for (let file of this.openFiles) {
-      let minVer = oldest.get(file.uri)
-      if (file.history.length) file.history = minVer == null ? [] : file.history.filter(s => s.syncedVersion >= minVer!)
     }
   }
 
@@ -444,7 +445,7 @@ export class LSPClient {
         next = next < 0 ? end : Math.min(next, end)
       }
     }
-    if (next > -1) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), next - now)
+    if (next > -1) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), next - now + 10)
   }
 }
 

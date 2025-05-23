@@ -62,9 +62,9 @@ function doRename(view: EditorView, newName: string) {
       let target = view
       if (uri != plugin.uri) { // Not the file in this editor
         if (handler && handler(uri, lspChanges)) continue
-        let open = plugin.client.mainEditor(uri)
-        if (!open) continue
-        target = open
+        let file = plugin.client.getOpenFile(uri)
+        if (!file) continue
+        target = file.mainEditor(plugin.view)
       }
       let changed = mapping.getMapping(uri)
       let changes: ChangeSpec[] = []
