@@ -167,6 +167,8 @@ const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params
 
 /// Configuration options that can be passed to the LSP client.
 export type LSPClientConfig = {
+  /// The project root URI passed to the server, when necessary.
+  rootURI?: string
   /// The amount of milliseconds after which requests are
   /// automatically timed out. Defaults to 3000.
   timeout?: number
@@ -239,7 +241,7 @@ export class LSPClient {
     this.requestInner<lsp.InitializeParams, lsp.InitializeResult>("initialize", {
       processId: null,
       clientInfo: {name: "@codemirror/lsp-client"},
-      rootUri: null,
+      rootUri: this.config.rootURI || null,
       capabilities: clientCapabilities
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
