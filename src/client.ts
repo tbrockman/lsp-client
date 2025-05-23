@@ -136,6 +136,8 @@ class WorkspaceMapping {
   }
 }
 
+// FIXME define this in terms of parsed JSON objects?
+
 /// An object of this type should be used to wrap whatever transport
 /// layer you use to talk to your language server. Messages should
 /// contain only the JSON messages, no LSP headers.
@@ -168,7 +170,7 @@ const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params
 /// Configuration options that can be passed to the LSP client.
 export type LSPClientConfig = {
   /// The project root URI passed to the server, when necessary.
-  rootURI?: string
+  rootUri?: string
   /// The amount of milliseconds after which requests are
   /// automatically timed out. Defaults to 3000.
   timeout?: number
@@ -217,6 +219,7 @@ export class LSPClient {
   /// The capabilities advertised by the server. Will be null when not
   /// connected or initialized.
   serverCapabilities: lsp.ServerCapabilities | null = null
+  private supportSync = 0
   /// A promise that resolves once the client connection is initialized. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
@@ -241,10 +244,12 @@ export class LSPClient {
     this.requestInner<lsp.InitializeParams, lsp.InitializeResult>("initialize", {
       processId: null,
       clientInfo: {name: "@codemirror/lsp-client"},
-      rootUri: this.config.rootURI || null,
+      rootUri: this.config.rootUri || null,
       capabilities: clientCapabilities
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
+      let sync = resp.capabilities.textDocumentSync
+      this.supportSync = sync == null ? 0 : typeof sync == "number" ? sync : sync.change ?? 0
       this.notification<lsp.InitializedParams>("initialized", {})
       this.init.resolve(null)
     }, this.init.reject)
@@ -439,9 +444,9 @@ export class LSPClient {
         }
         file.version++
         plugin.fileState = new FileState(file.version, ChangeSet.empty(main.state.doc.length))
-        this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
+        if (this.supportSync) this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
           textDocument: {uri: file.uri, version: file.version},
-          contentChanges: contentChangesFor(file, fileState, main.state.doc)
+          contentChanges: contentChangesFor(file, fileState, main.state.doc, this.supportSync == 2 /* Incremental */)
         })
       }
     }
@@ -458,8 +463,13 @@ export class LSPClient {
 
 const enum Sync { AlwaysIfSmaller = 1024 }
 
-function contentChangesFor(file: OpenFile, fileState: FileState, doc: Text): lsp.TextDocumentContentChangeEvent[] {
-  if (file.version != fileState.syncedVersion || doc.length < Sync.AlwaysIfSmaller)
+function contentChangesFor(
+  file: OpenFile,
+  fileState: FileState,
+  doc: Text,
+  supportInc: boolean
+): lsp.TextDocumentContentChangeEvent[] {
+  if (!supportInc || file.version != fileState.syncedVersion || doc.length < Sync.AlwaysIfSmaller)
     return [{text: doc.toString()}]
   let events: lsp.TextDocumentContentChangeEvent[] = []
   fileState.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {

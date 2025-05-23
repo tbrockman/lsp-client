@@ -51,5 +51,9 @@ export const lspTheme = EditorView.baseTheme({
       font: "inherit",
       padding: "0"
     }
+  },
+
+  ".cm-lsp-message button[type=submit]": {
+    display: "block"
   }
 })
