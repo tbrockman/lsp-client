@@ -10,9 +10,10 @@ import {LSPPlugin} from "./plugin"
 /// Create an extension that queries the language server for hover
 /// tooltips when the user hovers over the code with their pointer,
 /// and displays a tooltip when the server provides one.
-export function hoverTooltips(): Extension {
+export function hoverTooltips(config: {hoverTime?: number} = {}): Extension {
   return hoverTooltip(lspTooltipSource, {
-    hideOn: tr => tr.docChanged
+    hideOn: tr => tr.docChanged,
+    hoverTime: config.hoverTime
   })
 }
 
@@ -20,7 +21,7 @@ function hoverRequest(plugin: LSPPlugin, pos: number) {
   if (plugin.client.hasCapability("hoverProvider") === false) return Promise.resolve(null)
   plugin.sync()
   return plugin.client.request<lsp.HoverParams, lsp.Hover | null>("textDocument/hover", {
-    position: plugin.toPos(pos),
+    position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},
   })
 }

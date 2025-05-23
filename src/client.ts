@@ -219,7 +219,7 @@ export class LSPClient {
   /// The capabilities advertised by the server. Will be null when not
   /// connected or initialized.
   serverCapabilities: lsp.ServerCapabilities | null = null
-  private supportSync = 0
+  private supportSync = -1
   /// A promise that resolves once the client connection is initialized. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
@@ -250,7 +250,7 @@ export class LSPClient {
       this.serverCapabilities = resp.capabilities
       let sync = resp.capabilities.textDocumentSync
       this.supportSync = sync == null ? 0 : typeof sync == "number" ? sync : sync.change ?? 0
-      this.notification<lsp.InitializedParams>("initialized", {})
+      transport.send(JSON.stringify({jsonrpc: "2.0", method: "initialized", params: {}}))
       this.init.resolve(null)
     }, this.init.reject)
     for (let file of this.openFiles) {
@@ -442,12 +442,12 @@ export class LSPClient {
             }
           }
         }
-        file.version++
-        plugin.fileState = new FileState(file.version, ChangeSet.empty(main.state.doc.length))
+        plugin.fileState = new FileState(file.version, main.state.doc)
         if (this.supportSync) this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
           textDocument: {uri: file.uri, version: file.version},
           contentChanges: contentChangesFor(file, fileState, main.state.doc, this.supportSync == 2 /* Incremental */)
         })
+        file.version++
       }
     }
   }
@@ -474,9 +474,9 @@ function contentChangesFor(
   let events: lsp.TextDocumentContentChangeEvent[] = []
   fileState.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
     events.push({
-      range: {start: toPosition(doc, fromA), end: toPosition(doc, toA)},
+      range: {start: toPosition(fileState.startDoc, fromA), end: toPosition(fileState.startDoc, toA)},
       text: inserted.toString()
     })
   })
-  return events
+  return events.reverse()
 }

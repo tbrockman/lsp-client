@@ -25,7 +25,7 @@ function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionC
   if (plugin.client.hasCapability("completionProvider") === false) return Promise.resolve(null)
   plugin.sync()
   let params: lsp.CompletionParams = {
-    position: plugin.toPos(pos),
+    position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},
     context
   }

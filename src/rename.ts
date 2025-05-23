@@ -6,7 +6,7 @@ function getRename(plugin: LSPPlugin, pos: number, newName: string) {
   plugin.sync()
   return plugin.client.mappedRequest<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
     newName,
-    position: plugin.toPos(pos),
+    position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},
   })
 }

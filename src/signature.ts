@@ -9,7 +9,7 @@ function getSignatureHelp(plugin: LSPPlugin, pos: number, context: lsp.Signature
   plugin.sync()
   return plugin.client.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
     context,
-    position: plugin.toPos(pos),
+    position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},
   })
 }

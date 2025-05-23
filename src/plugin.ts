@@ -10,16 +10,21 @@ import {lspTheme} from "./theme"
 export class FileState {
   constructor(
     readonly syncedVersion: number,
-    readonly changes: ChangeSet
+    readonly startDoc: Text,
+    readonly changes: ChangeSet = ChangeSet.empty(startDoc.length)
   ) {}
 }
 
+/// A plugin that connects a given editor to a language server client.
 export class LSPPlugin {
+  /// The client connection.
   client: LSPClient
+  /// The URI of this file.
   uri: string
   /// @internal
   fileState: FileState
 
+  /// @internal
   constructor(readonly view: EditorView, {client, uri, languageID}: {client: LSPClient, uri: string, languageID?: string}) {
     this.client = client
     this.uri = uri
@@ -27,8 +32,7 @@ export class LSPPlugin {
       let lang = view.state.facet(language)
       languageID = lang ? lang.name : ""
     }
-    this.fileState = new FileState(client.registerUser(uri, languageID, view),
-                                   ChangeSet.empty(view.state.doc.length))
+    this.fileState = new FileState(client.registerUser(uri, languageID, view), view.state.doc)
   }
 
   /// Notify the server of any local changes that have been made to
@@ -48,13 +52,13 @@ export class LSPPlugin {
   /// Convert a CodeMirror document offset into an LSP `{line,
   /// character}` object. Defaults to using the view's current
   /// document, but can be given another one.
-  toPos(pos: number, doc: Text = this.view.state.doc) {
+  toPosition(pos: number, doc: Text = this.view.state.doc) {
     return toPosition(doc, pos)
   }
 
   /// Convert an LSP `{line, character}` object to a CodeMirror
   /// document offset.
-  fromPos(pos: lsp.Position, doc: Text = this.view.state.doc) {
+  fromPosition(pos: lsp.Position, doc: Text = this.view.state.doc) {
     return fromPosition(doc, pos)
   }
 
@@ -70,6 +74,7 @@ export class LSPPlugin {
   update(update: ViewUpdate) {
     if (!update.changes.empty)
       this.fileState = new FileState(this.fileState.syncedVersion,
+                                     this.fileState.startDoc,
                                      this.fileState.changes.compose(update.changes))
   }
 

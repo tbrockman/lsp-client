@@ -2,7 +2,7 @@ import {WebSocketServer} from "ws"
 import {spawn} from "node:child_process"
 import {join} from "node:path"
 
-let project = join(import.meta.dirname, "..", "test", "tsproject")
+let project = join(import.meta.dirname, "..", "test")
 
 let server = new WebSocketServer({port: 8777})
 
