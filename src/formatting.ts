@@ -3,7 +3,6 @@ import {Command, KeyBinding} from "@codemirror/view"
 import {ChangeSpec} from "@codemirror/state"
 import {indentUnit, getIndentUnit} from "@codemirror/language"
 import {LSPPlugin} from "./plugin"
-import {fromPos} from "./pos"
 
 function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
   plugin.sync()
@@ -18,7 +17,6 @@ function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
 export const formatDocument: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin) return false
-  let startDoc = view.state.doc
   getFormatting(plugin, {
     tabSize: getIndentUnit(view.state),
     insertSpaces: view.state.facet(indentUnit).indexOf("\t") < 0,
@@ -27,7 +25,8 @@ export const formatDocument: Command = view => {
     let changed = mapping.getMapping(plugin.uri)
     let changes: ChangeSpec[] = []
     for (let change of response) {
-      let from = fromPos(startDoc, change.range.start), to = fromPos(startDoc, change.range.end)
+      let from = mapping.mapPosition(plugin.uri, change.range.start)
+      let to = mapping.mapPosition(plugin.uri, change.range.end)
       if (changed) {
         // Don't try to apply the changes if code inside of any of them was touched
         if (changed.touchesRange(from, to)) return

@@ -4,7 +4,7 @@ import {ChangeSet, Text, Extension} from "@codemirror/state"
 import {language} from "@codemirror/language"
 import {type LSPClient} from "./client"
 import {docToHTML, withContext} from "./text"
-import {toPos, fromPos} from "./pos"
+import {toPosition, fromPosition} from "./pos"
 import {lspTheme} from "./theme"
 
 export class FileState {
@@ -49,13 +49,13 @@ export class LSPPlugin {
   /// character}` object. Defaults to using the view's current
   /// document, but can be given another one.
   toPos(pos: number, doc: Text = this.view.state.doc) {
-    return toPos(doc, pos)
+    return toPosition(doc, pos)
   }
 
   /// Convert an LSP `{line, character}` object to a CodeMirror
   /// document offset.
   fromPos(pos: lsp.Position, doc: Text = this.view.state.doc) {
-    return fromPos(doc, pos)
+    return fromPosition(doc, pos)
   }
 
   reportError(message: any, err: any) {

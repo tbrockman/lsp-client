@@ -3,17 +3,17 @@ import {EditorView, showDialog} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
 import {lspPlugin, FileState} from "./plugin"
-import {toPos} from "./pos"
+import {toPosition, fromPosition} from "./pos"
 
 class Request<Result> {
   declare resolve: (result: Result) => void
   declare reject: (error: any) => void
-  started = Date.now()
   promise: Promise<Result>
 
   constructor(
     readonly id: number,
-    readonly params: any
+    readonly params: any,
+    readonly timeout: number
   ) {
     this.promise = new Promise((resolve, reject) => {
       this.resolve = resolve
@@ -78,22 +78,26 @@ class OpenFile {
 /// documents between the time a request is started and the time its
 /// result comes back.
 class WorkspaceMapping {
-  // @internal
-  mappings: Map<string, {view: EditorView, start: Text, changes: ChangeDesc, version: number}> = new Map
+  /// @internal
+  mappings: Map<string, {view: EditorView, changes: ChangeDesc, version: number}> = new Map
+  private startDocs: Map<string, Text> = new Map
 
   /// @internal
   constructor(client: LSPClient) {
     for (let file of client.openFiles) {
       let view = file.mainEditor()
-      if (view) this.mappings.set(file.uri, {
-        view,
-        start: view.state.doc,
-        changes: ChangeSet.empty(view.state.doc.length),
-        version: file.version
-      })
+      if (view) {
+        this.mappings.set(file.uri, {
+          view,
+          changes: ChangeSet.empty(view.state.doc.length),
+          version: file.version
+        })
+        this.startDocs.set(file.uri, view.state.doc)
+      }
     }
   }
 
+  /// @internal
   finish() {
     for (let record of this.mappings.values()) {
       let plugin = record.view.plugin(lspPlugin)
@@ -111,6 +115,18 @@ class WorkspaceMapping {
     return record ? record.changes.mapPos(pos, mode) : pos
   }
 
+  /// Convert an LSP-style position referring to a document at the
+  /// start of the request to an offset in the current document.
+  mapPosition(uri: string, pos: lsp.Position): number
+  mapPosition(uri: string, pos: lsp.Position, mode: MapMode): number | null
+  mapPosition(uri: string, pos: lsp.Position, mode: MapMode = MapMode.Simple): number | null {
+    let start = this.startDocs.get(uri)
+    if (!start) throw new Error("Cannot map from a file that isn't open")
+    let off = fromPosition(start, pos)
+    let record = this.mappings.get(uri)
+    return record ? record.changes.mapPos(off, mode) : off
+  }
+
   /// Get the changes made to the document with the given URI during
   /// the request. Returns null for documents that weren't changed or
   /// aren't open.
@@ -118,8 +134,6 @@ class WorkspaceMapping {
     let record = this.mappings.get(uri)
     return record ? record.changes : null
   }
-
-  // FIXME maybe allow direct conversion of old-doc Position objects
 }
 
 /// An object of this type should be used to wrap whatever transport
@@ -201,11 +215,10 @@ export class LSPClient {
   /// The capabilities advertised by the server. Will be null when not
   /// connected or initialized.
   serverCapabilities: lsp.ServerCapabilities | null = null
-  /// A promise that resolves the client is connected. Will be
+  /// A promise that resolves once the client connection is initialized. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
   declare private init: {resolve: (value: null) => void, reject: (err: any) => void}
-  private timeoutWorker = 0
   private timeout: number
 
   /// Create a client object.
@@ -262,6 +275,7 @@ export class LSPClient {
         console.warn(`[lsp] Received a response for non-existent request ${value.id}`)
       } else {
         let req = this.requests[index]
+        clearTimeout(req.timeout)
         this.requests.splice(index, 1)
         if (value.error) req.reject(value.error)
         else req.resolve(value.result)
@@ -336,9 +350,8 @@ export class LSPClient {
       method,
       params: params as any
     }
-    let req = new Request<Result>(id, params)
+    let req = new Request<Result>(id, params, setTimeout(() => this.timeoutRequest(req), this.timeout))
     this.requests.push(req)
-    if (this.timeoutWorker == 0) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), this.timeout + 10)
     try { this.transport!.send(JSON.stringify(data)) }
     catch(e) { req.reject(e) }
     return req
@@ -432,20 +445,12 @@ export class LSPClient {
     }
   }
 
-  private timeoutRequests() {
-    this.timeoutWorker = 0
-    let now = Date.now(), next = -1
-    for (let i = 0; i < this.requests.length; i++) {
-      let req = this.requests[i]
-      if (req.started + this.timeout <= now) {
-        req.reject(new Error("Request timed out"))
-        this.requests.splice(i--, 1)
-      } else {
-        let end = req.started + this.timeout
-        next = next < 0 ? end : Math.min(next, end)
-      }
+  private timeoutRequest(req: Request<any>) {
+    let index = this.requests.indexOf(req)
+    if (index > -1) {
+      req.reject(new Error("Request timed out"))
+      this.requests.splice(index, 1)
     }
-    if (next > -1) this.timeoutWorker = setTimeout(() => this.timeoutRequests(), next - now + 10)
   }
 }
 
@@ -457,7 +462,7 @@ function contentChangesFor(file: OpenFile, fileState: FileState, doc: Text): lsp
   let events: lsp.TextDocumentContentChangeEvent[] = []
   fileState.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
     events.push({
-      range: {start: toPos(doc, fromA), end: toPos(doc, toA)},
+      range: {start: toPosition(doc, fromA), end: toPosition(doc, toA)},
       text: inserted.toString()
     })
   })

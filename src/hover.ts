@@ -3,7 +3,7 @@ import {EditorView, Tooltip, hoverTooltip} from "@codemirror/view"
 import {Extension} from "@codemirror/state"
 import {language as languageFacet, highlightingFor} from "@codemirror/language"
 import {highlightCode} from "@lezer/highlight"
-import {fromPos} from "./pos"
+import {fromPosition} from "./pos"
 import {escHTML} from "./text"
 import {LSPPlugin} from "./plugin"
 
@@ -31,8 +31,8 @@ function lspTooltipSource(view: EditorView, pos: number): Promise<Tooltip | null
   return hoverRequest(plugin, pos).then(result => {
     if (!result) return null
     return {
-      pos: result.range ? fromPos(view.state.doc, result.range.start) : pos,
-      end: result.range ? fromPos(view.state.doc, result.range.end) : pos,
+      pos: result.range ? fromPosition(view.state.doc, result.range.start) : pos,
+      end: result.range ? fromPosition(view.state.doc, result.range.end) : pos,
       create() {
         let elt = document.createElement("div")
         elt.className = "cm-lsp-hover-tooltip cm-lsp-documentation"

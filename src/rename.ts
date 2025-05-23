@@ -1,8 +1,6 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {ChangeSpec} from "@codemirror/state"
 import {EditorView, Command, KeyBinding, showDialog, getDialog} from "@codemirror/view"
 import {LSPPlugin} from "./plugin"
-import {fromPos} from "./pos"
 
 function getRename(plugin: LSPPlugin, pos: number, newName: string) {
   plugin.sync()
@@ -52,7 +50,6 @@ function doRename(view: EditorView, newName: string) {
   let word = view.state.wordAt(view.state.selection.main.head)
   if (!plugin || !word) return false
 
-  let startDoc = view.state.doc
   getRename(plugin, word.from, newName).then(({response, mapping}) => {
     if (!response) return
     let handler = plugin.client.config.handleChangeInFile
@@ -66,20 +63,12 @@ function doRename(view: EditorView, newName: string) {
         if (!file) continue
         target = file.mainEditor(plugin.view)
       }
-      let changed = mapping.getMapping(uri)
-      let changes: ChangeSpec[] = []
-      for (let change of lspChanges) {
-        let from = fromPos(startDoc, change.range.start), to = fromPos(startDoc, change.range.end)
-        if (changed) {
-          // Don't try to apply the changes if code inside of any of them was touched
-          if (changed.touchesRange(from, to)) continue uris
-          from = changed.mapPos(from, 1)
-          to = changed.mapPos(to, -1)
-        }
-        changes.push({from, to, insert: change.newText})
-      }
       target.dispatch({
-        changes,
+        changes: lspChanges.map(change => ({
+          from: mapping.mapPosition(uri, change.range.start),
+          to: mapping.mapPosition(uri, change.range.end),
+          insert: change.newText
+        })),
         userEvent: "rename"
       })
     }
