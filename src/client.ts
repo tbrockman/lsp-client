@@ -54,6 +54,10 @@ const clientCapabilities: lsp.ClientCapabilities = {
         activeParameterSupport: true,
       },
     },
+    definition: {},
+    declaration: {},
+    implementation: {},
+    typeDefinition: {},
   },
 }
 
@@ -192,6 +196,13 @@ export type LSPClientConfig = {
   /// it returns false, and another editor view has the given URI
   /// open, the changes will be dispatched to the other editor.
   handleChangeInFile?: (uri: string, changes: lsp.TextEdit[]) => boolean
+  /// When the client needs to put a file other than the one loaded in
+  /// the current editor in front of the user, for example in
+  /// [`jumpToDefinition`](#lsp-client.jumpToDefinition), it will call
+  /// this function. It should make sure to create or find an editor
+  /// with the file and make it visible to the user, or return null if
+  /// this isn't possible.
+  displayFile?: (uri: string) => EditorView | null
   /// By default, the client will only handle the server notifications
   /// `window/logMessage` (logging warning and errors to the console)
   /// and `window/showMessage`. You can pass additional handlers here.

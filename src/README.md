@@ -102,3 +102,13 @@ new EditorView({
 @nextSignature
 
 @prevSignature
+
+@jumpToDefinition
+
+@jumpToDeclaration
+
+@jumpToTypeDefinition
+
+@jumpToImplementation
+
+@jumpToDefinitionKeymap

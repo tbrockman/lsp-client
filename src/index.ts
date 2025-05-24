@@ -4,6 +4,7 @@ export {hoverTooltips} from "./hover"
 export {formatDocument, formatKeymap} from "./formatting"
 export {renameSymbol, renameKeymap} from "./rename"
 export {signatureHelp, nextSignature, prevSignature, showSignatureHelp} from "./signature"
+export {jumpToDefinition, jumpToDeclaration, jumpToTypeDefinition, jumpToImplementation, jumpToDefinitionKeymap} from "./definition"
 export {LSPPlugin} from "./plugin"
 
 import {Extension} from "@codemirror/state"
@@ -15,6 +16,7 @@ import {hoverTooltips} from "./hover"
 import {formatKeymap} from "./formatting"
 import {renameKeymap} from "./rename"
 import {signatureHelp} from "./signature"
+import {jumpToDefinitionKeymap} from "./definition"
 
 /// Returns an extension that enables the [LSP
 /// plugin](#lsp-client.LSPPlugin) and all other features provided by
@@ -27,7 +29,7 @@ export function languageServerSupport(client: LSPClient, uri: string, languageID
     LSPPlugin.create(client, uri, languageID),
     serverCompletion(),
     hoverTooltips(),
-    keymap.of([...formatKeymap, ...renameKeymap]),
+    keymap.of([...formatKeymap, ...renameKeymap, ...jumpToDefinitionKeymap]),
     signatureHelp()
   ]
 }

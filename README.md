@@ -191,6 +191,15 @@ When this happens, the client will try to call this handler,
 when given, to process such changes. If it is not provided, or
 it returns false, and another editor view has the given URI
 open, the changes will be dispatched to the other editor.</p>
+</dd><dt id="user-content-lspclientconfig.displayfile">
+  <code><strong><a href="#user-content-lspclientconfig.displayfile">displayFile</a></strong>&#8288;?: fn(<a id="user-content-lspclientconfig.displayfile^uri" href="#user-content-lspclientconfig.displayfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+
+<dd><p>When the client needs to put a file other than the one loaded in
+the current editor in front of the user, for example in
+<a href="#user-content-jumptodefinition"><code>jumpToDefinition</code></a>, it will call
+this function. It should make sure to create or find an editor
+with the file and make it visible to the user, or return null if
+this isn't possible.</p>
 </dd><dt id="user-content-lspclientconfig.notificationhandlers">
   <code><strong><a href="#user-content-lspclientconfig.notificationhandlers">notificationHandlers</a></strong>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>&lt;fn(<a id="user-content-lspclientconfig.notificationhandlers^client" href="#user-content-lspclientconfig.notificationhandlers^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>, <a id="user-content-lspclientconfig.notificationhandlers^params" href="#user-content-lspclientconfig.notificationhandlers^params">params</a>: any) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>&gt;</code></dt>
 
@@ -381,5 +390,32 @@ move to the next one.</p>
 
 <dd><p>If there is an active signature tooltip with multiple signatures,
 move to the previous signature.</p>
+</dd>
+<dt id="user-content-jumptodefinition">
+  <code><strong><a href="#user-content-jumptodefinition">jumpToDefinition</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd><p>Jump to the definition of the symbol at the cursor. To support
+cross-file jumps, you'll need to implement
+<a href="#user-content-lspclientconfig.displayfile"><code>LSPClientConfig.displayFile</code></a>.</p>
+</dd>
+<dt id="user-content-jumptodeclaration">
+  <code><strong><a href="#user-content-jumptodeclaration">jumpToDeclaration</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd><p>Jump to the declaration of the symbol at the cursor.</p>
+</dd>
+<dt id="user-content-jumptotypedefinition">
+  <code><strong><a href="#user-content-jumptotypedefinition">jumpToTypeDefinition</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd><p>Jump to the type definition of the symbol at the cursor.</p>
+</dd>
+<dt id="user-content-jumptoimplementation">
+  <code><strong><a href="#user-content-jumptoimplementation">jumpToImplementation</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd><p>Jump to the implementation of the symbol at the cursor.</p>
+</dd>
+<dt id="user-content-jumptodefinitionkeymap">
+  <code><strong><a href="#user-content-jumptodefinitionkeymap">jumpToDefinitionKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
+
+<dd><p>Binds F12 to <a href="#user-content-jumptodefinition"><code>jumpToDefinition</code></a>.</p>
 </dd>
 </dl>
