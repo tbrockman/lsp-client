@@ -136,8 +136,6 @@ class WorkspaceMapping {
   }
 }
 
-// FIXME define this in terms of parsed JSON objects?
-
 /// An object of this type should be used to wrap whatever transport
 /// layer you use to talk to your language server. Messages should
 /// contain only the JSON messages, no LSP headers.
@@ -264,7 +262,7 @@ export class LSPClient {
         }
       })
     }
-    return this.initializing
+    return this
   }
 
   /// Disconnect the client from the server.
@@ -319,6 +317,7 @@ export class LSPClient {
   /// request and correctly handling state drift caused by local
   /// changes that happend during the request.
   request<Params, Result>(method: string, params: Params): Promise<Result> {
+    if (!this.transport) return Promise.reject(new Error("Client not connected"))
     return this.initializing.then(() => this.requestInner<Params, Result>(method, params).promise)
   }
 
@@ -330,6 +329,7 @@ export class LSPClient {
     response: Result,
     mapping: WorkspaceMapping
   }> {
+    if (!this.transport) return Promise.reject(new Error("Client not connected"))
     let mapping = new WorkspaceMapping(this)
     this.activeMappings.push(mapping)
     return this.initializing.then(() => {
@@ -350,7 +350,6 @@ export class LSPClient {
     params: Params,
     mapped = false
   ): Request<Result> {
-    if (!this.transport) throw new Error("Client not connected")
     let id = ++this.nextID, data: lsp.RequestMessage = {
       jsonrpc: "2.0",
       id,
