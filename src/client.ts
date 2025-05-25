@@ -58,6 +58,7 @@ const clientCapabilities: lsp.ClientCapabilities = {
     declaration: {},
     implementation: {},
     typeDefinition: {},
+    references: {},
   },
 }
 

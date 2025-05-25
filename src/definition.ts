@@ -32,7 +32,7 @@ function getImplementation(plugin: LSPPlugin, pos: number) {
 
 function jumpToOrigin(view: EditorView, type: {get: typeof getDefinition, capability: keyof lsp.ServerCapabilities}): boolean {
   let plugin = LSPPlugin.get(view)
-  if (!plugin || !plugin.client.hasCapability(type.capability)) return false
+  if (!plugin || !plugin.client.hasCapability(type.capability) === false) return false
   type.get(plugin, view.state.selection.main.head).then(({mapping, response}) => {
     if (!response) return
     let loc = Array.isArray(response) ? response[0] : response
