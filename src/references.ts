@@ -3,22 +3,21 @@ import {Command, KeyBinding} from "@codemirror/view"
 import {LSPPlugin} from "./plugin"
 
 function getReferences(plugin: LSPPlugin, pos: number) {
-  return plugin.client.mappedRequest<lsp.ReferenceParams, lsp.Location[] | null>("textDocument/references", {
+  return plugin.client.request<lsp.ReferenceParams, lsp.Location[] | null>("textDocument/references", {
     textDocument: {uri: plugin.uri},
     position: plugin.toPosition(pos),
     context: {includeDeclaration: true}
   })
 }
 
-
-
 export const findReferences: Command = view => {
-  let plugin = LSPPlugin.get(view)
+  const plugin = LSPPlugin.get(view)
   if (!plugin || !plugin.client.hasCapability("referencesProvider") === false) return false
-  getReferences(plugin, view.state.selection.main.head).then(({mapping, response}) => {
+  plugin.sync()
+  plugin.client.withMapping(mapping => getReferences(plugin, view.state.selection.main.head).then(response => {
     if (!response) return
     
-  }, err => plugin.reportError("Finding references failed", err))
+  }, err => plugin.reportError("Finding references failed", err)))
   return true
 }
 

@@ -5,8 +5,7 @@ import {indentUnit, getIndentUnit} from "@codemirror/language"
 import {LSPPlugin} from "./plugin"
 
 function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
-  plugin.sync()
-  return plugin.client.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
+  return plugin.client.request<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
     options,
     textDocument: {uri: plugin.uri},
   })
@@ -17,10 +16,11 @@ function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
 export const formatDocument: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin) return false
-  getFormatting(plugin, {
+  plugin.sync()
+  plugin.client.withMapping(mapping => getFormatting(plugin, {
     tabSize: getIndentUnit(view.state),
     insertSpaces: view.state.facet(indentUnit).indexOf("\t") < 0,
-  }).then(({response, mapping}) => {
+  }).then(response => {
     if (!response) return
     let changed = mapping.getMapping(plugin.uri)
     let changes: ChangeSpec[] = []
@@ -41,7 +41,7 @@ export const formatDocument: Command = view => {
     })
   }, err => {
     plugin.reportError("Formatting request failed", err)
-  })
+  }))
   return true
 }
 

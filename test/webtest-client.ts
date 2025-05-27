@@ -91,32 +91,36 @@ describe("LSPClient", () => {
     ist(server.getFile("file:///x")!.text, "alfalfa!")
   })
 
-  it("can provide request mapping", async () => {
+  it("can provide mapping", async () => {
     let {client} = setup()
     let cm = ed(client, {doc: "1\n2\n3"})
-    let req = client.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
-      textDocument: {uri: URI},
-      options: {tabSize: 2, insertSpaces: true}
+    await client.withMapping(async mapping => {
+      let req = client.request<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
+        textDocument: {uri: URI},
+        options: {tabSize: 2, insertSpaces: true}
+      })
+      cm.dispatch({changes: {from: 1, to: 3}})
+      let response = await req
+      ist(response![0].range.start.line, 2)
+      ist(mapping.mapPos(URI, 5), 3)
     })
-    cm.dispatch({changes: {from: 1, to: 3}})
-    let {mapping, response} = await req
-    ist(response![0].range.start.line, 2)
-    ist(mapping.mapPos(URI, 5), 3)
   })
 
-  it("can provide request mapping across syncs", async () => {
+  it("can provide mapping across syncs", async () => {
     let {client} = setup({server: {delay: {"textDocument/formatting": 10}}})
     let cm = ed(client, {doc: "1\n2\n3"})
-    let req = client.mappedRequest<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
-      textDocument: {uri: URI},
-      options: {tabSize: 2, insertSpaces: true}
+    await client.withMapping(async mapping => {
+      let req = client.request<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
+        textDocument: {uri: URI},
+        options: {tabSize: 2, insertSpaces: true}
+      })
+      cm.dispatch({changes: {from: 1, to: 3}})
+      sync(cm)
+      cm.dispatch({changes: {from: 0, insert: "#"}})
+      let response = await req
+      ist(response![0].range.start.line, 2)
+      ist(mapping.mapPos(URI, 5), 4)
     })
-    cm.dispatch({changes: {from: 1, to: 3}})
-    sync(cm)
-    cm.dispatch({changes: {from: 0, insert: "#"}})
-    let {mapping, response} = await req
-    ist(response![0].range.start.line, 2)
-    ist(mapping.mapPos(URI, 5), 4)
   })
 
   it("reports invalid methods", async () => {

@@ -3,45 +3,47 @@ import {EditorView, Command, KeyBinding} from "@codemirror/view"
 import {LSPPlugin} from "./plugin"
 
 function getDefinition(plugin: LSPPlugin, pos: number) {
-  return plugin.client.mappedRequest<lsp.DefinitionParams, lsp.Location | lsp.Location[] | null>("textDocument/definition", {
+  return plugin.client.request<lsp.DefinitionParams, lsp.Location | lsp.Location[] | null>("textDocument/definition", {
     textDocument: {uri: plugin.uri},
     position: plugin.toPosition(pos)
   })
 }
 
 function getDeclaration(plugin: LSPPlugin, pos: number) {
-  return plugin.client.mappedRequest<lsp.DeclarationParams, lsp.Location | lsp.Location[] | null>("textDocument/declaration", {
+  return plugin.client.request<lsp.DeclarationParams, lsp.Location | lsp.Location[] | null>("textDocument/declaration", {
     textDocument: {uri: plugin.uri},
     position: plugin.toPosition(pos)
   })
 }
 
 function getTypeDefinition(plugin: LSPPlugin, pos: number) {
-  return plugin.client.mappedRequest<lsp.TypeDefinitionParams, lsp.Location | lsp.Location[] | null>("textDocument/typeDefinition", {
+  return plugin.client.request<lsp.TypeDefinitionParams, lsp.Location | lsp.Location[] | null>("textDocument/typeDefinition", {
     textDocument: {uri: plugin.uri},
     position: plugin.toPosition(pos)
   })
 }
 
 function getImplementation(plugin: LSPPlugin, pos: number) {
-  return plugin.client.mappedRequest<lsp.ImplementationParams, lsp.Location | lsp.Location[] | null>("textDocument/implementation", {
+  return plugin.client.request<lsp.ImplementationParams, lsp.Location | lsp.Location[] | null>("textDocument/implementation", {
     textDocument: {uri: plugin.uri},
     position: plugin.toPosition(pos)
   })
 }
 
 function jumpToOrigin(view: EditorView, type: {get: typeof getDefinition, capability: keyof lsp.ServerCapabilities}): boolean {
-  let plugin = LSPPlugin.get(view)
-  if (!plugin || !plugin.client.hasCapability(type.capability) === false) return false
-  type.get(plugin, view.state.selection.main.head).then(({mapping, response}) => {
+  const plugin = LSPPlugin.get(view)
+  if (!plugin || plugin.client.hasCapability(type.capability) === false) return false
+  plugin.sync()
+  plugin.client.withMapping(mapping => type.get(plugin, view.state.selection.main.head).then(response => {
     if (!response) return
     let loc = Array.isArray(response) ? response[0] : response
-    let target = loc.uri == plugin.uri ? view : plugin.client.config.displayFile?.(loc.uri)
-    if (!target) return
-    let pos = mapping.getMapping(loc.uri) ? mapping.mapPosition(loc.uri, loc.range.start)
-      : plugin.fromPosition(loc.range.start, target.state.doc)
-    target.dispatch({selection: {anchor: pos}, scrollIntoView: true, userEvent: "select.definition"})
-  }, error => plugin.reportError("Find definition failed", error))
+    return (loc.uri == plugin.uri ? Promise.resolve(view) : plugin.client.workspace.displayFile(loc.uri)).then(target => {
+      if (!target) return
+      let pos = mapping.getMapping(loc.uri) ? mapping.mapPosition(loc.uri, loc.range.start)
+        : plugin.fromPosition(loc.range.start, target.state.doc)
+      target.dispatch({selection: {anchor: pos}, scrollIntoView: true, userEvent: "select.definition"})
+    })
+  }, error => plugin.reportError("Find definition failed", error)))
   return true
 }
 

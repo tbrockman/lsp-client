@@ -3,8 +3,7 @@ import {EditorView, Command, KeyBinding, showDialog, getDialog} from "@codemirro
 import {LSPPlugin} from "./plugin"
 
 function getRename(plugin: LSPPlugin, pos: number, newName: string) {
-  plugin.sync()
-  return plugin.client.mappedRequest<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
+  return plugin.client.request<lsp.RenameParams, lsp.WorkspaceEdit | null>("textDocument/rename", {
     newName,
     position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},
@@ -23,7 +22,7 @@ export const renameSymbol: Command = view => {
   let wordRange = view.state.wordAt(view.state.selection.main.head)
   let plugin = LSPPlugin.get(view)
   if (!wordRange || !plugin || plugin.client.hasCapability("renameProvider") === false) return false
-  let word = view.state.sliceDoc(wordRange.from, wordRange.to)
+  const word = view.state.sliceDoc(wordRange.from, wordRange.to)
   let panel = getDialog(view, "cm-lsp-rename-panel")
   if (panel) {
     let input = panel.dom.querySelector("[name=name]") as HTMLInputElement
@@ -47,23 +46,16 @@ export const renameSymbol: Command = view => {
 
 function doRename(view: EditorView, newName: string) {
   const plugin = LSPPlugin.get(view)
-  let word = view.state.wordAt(view.state.selection.main.head)
+  const word = view.state.wordAt(view.state.selection.main.head)
   if (!plugin || !word) return false
 
-  getRename(plugin, word.from, newName).then(({response, mapping}) => {
+  plugin.sync()
+  plugin.client.withMapping(mapping => getRename(plugin, word.from, newName).then(response => {
     if (!response) return
-    let handler = plugin.client.config.handleChangeInFile
     uris: for (let uri in response.changes) {
-      let lspChanges = response.changes[uri]
-      if (!lspChanges.length) continue
-      let target = view
-      if (uri != plugin.uri) { // Not the file in this editor
-        if (handler && handler(uri, lspChanges)) continue
-        let file = plugin.client.getOpenFile(uri)
-        if (!file) continue
-        target = file.mainEditor(plugin.view)
-      }
-      target.dispatch({
+      let lspChanges = response.changes[uri], file = plugin.client.workspace.getFile(uri)
+      if (!lspChanges.length || !file) continue
+      plugin.client.workspace.updateFile(uri, {
         changes: lspChanges.map(change => ({
           from: mapping.mapPosition(uri, change.range.start),
           to: mapping.mapPosition(uri, change.range.end),
@@ -74,7 +66,7 @@ function doRename(view: EditorView, newName: string) {
     }
   }, err => {
     plugin.reportError("Rename request failed", err)
-  })
+  }))
 }
 
 /// A keymap that binds F2 to [`renameSymbol`](#lsp-server.renameSymbol).

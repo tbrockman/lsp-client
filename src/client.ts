@@ -1,9 +1,10 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {EditorView, showDialog} from "@codemirror/view"
+import {showDialog} from "@codemirror/view"
 import {ChangeSet, ChangeDesc, MapMode, Text} from "@codemirror/state"
 import {Language} from "@codemirror/language"
-import {lspPlugin, FileState} from "./plugin"
+import {LSPPlugin} from "./plugin"
 import {toPosition, fromPosition} from "./pos"
+import {Workspace, WorkspaceFile, DefaultWorkspace} from "./workspace"
 
 class Request<Result> {
   declare resolve: (result: Result) => void
@@ -22,6 +23,7 @@ class Request<Result> {
   }
 }
 
+/// FIXME make it possible to enable more capabilities via config
 const clientCapabilities: lsp.ClientCapabilities = {
   general: {
     markdown: {
@@ -62,52 +64,35 @@ const clientCapabilities: lsp.ClientCapabilities = {
   },
 }
 
-class OpenFile {
-  version = 0
-  using: EditorView[] = []
-  requests: number[] = []
-
-  constructor(readonly uri: string, readonly languageId: string) {}
-
-  mainEditor(active?: EditorView) {
-    let index
-    if (active && (index = this.using.indexOf(active)) > -1) {
-      if (index) [this.using[index], this.using[0]] = [this.using[0], this.using[index]]
-      return active
-    }
-    return this.using[0]
-  }
-}
-
 /// A workspace mapping is used to track changes made to open
 /// documents between the time a request is started and the time its
 /// result comes back.
 class WorkspaceMapping {
   /// @internal
-  mappings: Map<string, {view: EditorView, changes: ChangeDesc, version: number}> = new Map
+  mappings: Map<string, ChangeDesc> = new Map
   private startDocs: Map<string, Text> = new Map
 
   /// @internal
-  constructor(client: LSPClient) {
-    for (let file of client.openFiles) {
-      let view = file.mainEditor()
-      if (view) {
-        this.mappings.set(file.uri, {
-          view,
-          changes: ChangeSet.empty(view.state.doc.length),
-          version: file.version
-        })
-        this.startDocs.set(file.uri, view.state.doc)
-      }
+  constructor(private client: LSPClient) {
+    for (let file of client.workspace.files) {
+      this.mappings.set(file.uri, ChangeSet.empty(file.doc.length))
+      this.startDocs.set(file.uri, file.doc)
     }
   }
 
-  /// @internal
-  finish() {
-    for (let record of this.mappings.values()) {
-      let plugin = record.view.plugin(lspPlugin)
-      if (plugin) record.changes = record.changes.composeDesc(plugin.fileState.changes)
-    }
+  addChanges(uri: string, changes: ChangeDesc) {
+    let known = this.mappings.get(uri)
+    if (known) this.mappings.set(uri, known.composeDesc(changes))
+  }
+
+  /// Get the changes made to the document with the given URI during
+  /// the request. Returns null for documents that weren't changed or
+  /// aren't open.
+  getMapping(uri: string) {
+    let known = this.mappings.get(uri)
+    if (!known) return null
+    let file = this.client.workspace.getFile(uri), view = file?.getView(), plugin = view && LSPPlugin.get(view)
+    return plugin ? known.composeDesc(plugin.unsyncedChanges) : known
   }
 
   /// Map a position in the given file forward from the document the
@@ -116,8 +101,8 @@ class WorkspaceMapping {
   mapPos(uri: string, pos: number): number
   mapPos(uri: string, pos: number, mode: MapMode): number | null
   mapPos(uri: string, pos: number, mode: MapMode = MapMode.Simple): number | null {
-    let record = this.mappings.get(uri)
-    return record ? record.changes.mapPos(pos, mode) : pos
+    let changes = this.getMapping(uri)
+    return changes ? changes.mapPos(pos, mode) : pos
   }
 
   /// Convert an LSP-style position referring to a document at the
@@ -126,18 +111,20 @@ class WorkspaceMapping {
   mapPosition(uri: string, pos: lsp.Position, mode: MapMode): number | null
   mapPosition(uri: string, pos: lsp.Position, mode: MapMode = MapMode.Simple): number | null {
     let start = this.startDocs.get(uri)
-    if (!start) throw new Error("Cannot map from a file that isn't open")
+    if (!start) throw new Error("Cannot map from a file that's not in the workspace")
     let off = fromPosition(start, pos)
-    let record = this.mappings.get(uri)
-    return record ? record.changes.mapPos(off, mode) : off
+    let changes = this.getMapping(uri)
+    return changes ? changes.mapPos(off, mode) : off
   }
 
-  /// Get the changes made to the document with the given URI during
-  /// the request. Returns null for documents that weren't changed or
-  /// aren't open.
-  getMapping(uri: string) {
-    let record = this.mappings.get(uri)
-    return record ? record.changes : null
+  /// Disconnect this mapping from the client so that it will no
+  /// longer be notified of new changes. You must make sure to call
+  /// this on every mapping you create, except when you use
+  /// [`withMapping`](#lsp-client.LSPClient.withMapping), which will
+  /// automatically schedule a disconnect when the given promise
+  /// resolves.
+  destroy() {
+    this.client.activeMappings = this.client.activeMappings.filter(m => m != this)
   }
 }
 
@@ -160,9 +147,10 @@ const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params
     else if (params.type == 2) console.warn("[lsp] " + params.message)
   },
   "window/showMessage": (client, params: lsp.ShowMessageParams) => {
-    if (!client.openFiles.length || params.type > 3 /* Info */) return
-    let view = client.openFiles[0].using[0]
-    showDialog(view, {
+    if (params.type > 3 /* Info */) return
+    let view
+    for (let f of client.workspace.files) if (view = f.getView()) break
+    if (view) showDialog(view, {
       label: params.message,
       class: "cm-lsp-message cm-lsp-message-" + (params.type == 1 ? "error" : params.type == 2 ? "warning" : "info"),
       top: true
@@ -174,6 +162,12 @@ const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params
 export type LSPClientConfig = {
   /// The project root URI passed to the server, when necessary.
   rootUri?: string
+  /// An optional function to create a
+  /// [workspace](#lsp-client.Workspace) object for the client to use.
+  /// When not given, this will default to a simple workspace that
+  /// only opens files that have an active editor, and only allows one
+  /// editor per file.
+  workspace?: (client: LSPClient) => Workspace
   /// The amount of milliseconds after which requests are
   /// automatically timed out. Defaults to 3000.
   timeout?: number
@@ -190,20 +184,6 @@ export type LSPClientConfig = {
   /// function here that returns a CodeMirror language object for a
   /// given language tag to support morelanguages.
   highlightLanguage?: (name: string) => Language | null
-  /// Some actions, like symbol rename, can cause the server to return
-  /// changes in files other than the one the active editor has open.
-  /// When this happens, the client will try to call this handler,
-  /// when given, to process such changes. If it is not provided, or
-  /// it returns false, and another editor view has the given URI
-  /// open, the changes will be dispatched to the other editor.
-  handleChangeInFile?: (uri: string, changes: lsp.TextEdit[]) => boolean
-  /// When the client needs to put a file other than the one loaded in
-  /// the current editor in front of the user, for example in
-  /// [`jumpToDefinition`](#lsp-client.jumpToDefinition), it will call
-  /// this function. It should make sure to create or find an editor
-  /// with the file and make it visible to the user, or return null if
-  /// this isn't possible.
-  displayFile?: (uri: string) => EditorView | null
   /// By default, the client will only handle the server notifications
   /// `window/logMessage` (logging warning and errors to the console)
   /// and `window/showMessage`. You can pass additional handlers here.
@@ -221,11 +201,11 @@ export type LSPClientConfig = {
 export class LSPClient {
   /// The transport active in the client, if it is connected.
   transport: Transport | null = null
-  private nextID = 0
+  workspace: Workspace
+  private nextReqID = 0
   private requests: Request<any>[] = []
-  private activeMappings: WorkspaceMapping[] = []
   /// @internal
-  openFiles: OpenFile[] = []
+  activeMappings: WorkspaceMapping[] = []
   /// The capabilities advertised by the server. Will be null when not
   /// connected or initialized.
   serverCapabilities: lsp.ServerCapabilities | null = null
@@ -241,7 +221,10 @@ export class LSPClient {
     this.receiveMessage = this.receiveMessage.bind(this)
     this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
     this.timeout = config.timeout ?? 3000
+    this.workspace = config.workspace ? config.workspace(this) : new DefaultWorkspace(this)
   }
+
+  get connected() { return !!this.transport }
 
   /// Connect this client to a server over the given transport. Will
   /// immediately start the initialization exchange with the server,
@@ -263,17 +246,7 @@ export class LSPClient {
       transport.send(JSON.stringify({jsonrpc: "2.0", method: "initialized", params: {}}))
       this.init.resolve(null)
     }, this.init.reject)
-    for (let file of this.openFiles) {
-      let editor = file.mainEditor()
-      this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
-        textDocument: {
-          uri: file.uri,
-          languageId: file.languageId,
-          text: editor.state.doc.toString(),
-          version: file.version
-        }
-      })
-    }
+    this.workspace.connected()
     return this
   }
 
@@ -282,6 +255,22 @@ export class LSPClient {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
     this.serverCapabilities = null
     this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
+    this.workspace.disconnected()
+  }
+
+  didOpen(file: WorkspaceFile) {
+    this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
+      textDocument: {
+        uri: file.uri,
+        languageId: file.languageId,
+        text: file.doc.toString(),
+        version: file.version
+      }
+    })
+  }
+
+  didClose(uri: string) {
+    this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
   }
 
   private receiveMessage(msg: string) {
@@ -313,12 +302,6 @@ export class LSPClient {
     }
   }
 
-  /// @internal
-  getOpenFile(uri: string) {
-    for (let f of this.openFiles) if (f.uri == uri) return f
-    return null
-  }
-
   /// Make a request to the server. Returns a promise that resolves to
   /// the response or rejects with a failure message. You'll probably
   /// want to use types from the `vscode-languageserver-protocol`
@@ -333,36 +316,12 @@ export class LSPClient {
     return this.initializing.then(() => this.requestInner<Params, Result>(method, params).promise)
   }
 
-  /// Make a request that tracks local changes that happen during the
-  /// request. The returned promise resolves to both a response and an
-  /// object that tells you about document changes that happened
-  /// during the request.
-  mappedRequest<Params, Result>(method: string, params: Params): Promise<{
-    response: Result,
-    mapping: WorkspaceMapping
-  }> {
-    if (!this.transport) return Promise.reject(new Error("Client not connected"))
-    let mapping = new WorkspaceMapping(this)
-    this.activeMappings.push(mapping)
-    return this.initializing.then(() => {
-      let req = this.requestInner<Params, Result>(method, params, true)
-      return req.promise.then(response => {
-        this.activeMappings = this.activeMappings.filter(m => m != mapping)
-        mapping.finish()
-        return {response, mapping}
-      })
-    }).catch(e => {
-      this.activeMappings = this.activeMappings.filter(m => m != mapping)
-      throw e
-    })
-  }
-
   private requestInner<Params, Result>(
     method: string,
     params: Params,
     mapped = false
   ): Request<Result> {
-    let id = ++this.nextID, data: lsp.RequestMessage = {
+    let id = ++this.nextReqID, data: lsp.RequestMessage = {
       jsonrpc: "2.0",
       id,
       method,
@@ -402,64 +361,21 @@ export class LSPClient {
     return this.serverCapabilities ? !!this.serverCapabilities[name] : null
   }
 
-  /// @internal
-  registerUser(uri: string, languageId: string, view: EditorView) {
-    let found = this.getOpenFile(uri)
-    if (!found) {
-      found = new OpenFile(uri, languageId)
-      this.openFiles.push(found)
-      this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
-        textDocument: {
-          uri,
-          languageId,
-          text: view.state.doc.toString(),
-          version: found.version
-        }
+  withMapping<T>(f: (mapping: WorkspaceMapping) => Promise<T>): Promise<T> {
+    let mapping = new WorkspaceMapping(this)
+    this.activeMappings.push(mapping)
+    return f(mapping).finally(() => mapping.destroy())
+  }
+
+  /// @internal FIXME document
+  sync() {
+    for (let {file, changes, prevDoc} of this.workspace.syncFiles()) {
+      for (let mapping of this.activeMappings)
+        mapping.addChanges(file.uri, changes)
+      if (this.supportSync) this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
+        textDocument: {uri: file.uri, version: file.version},
+        contentChanges: contentChangesFor(file, prevDoc, changes, this.supportSync == 2 /* Incremental */)
       })
-    }
-    found.using.unshift(view)
-    return found.version
-  }
-
-  /// @internal
-  unregisterUser(uri: string, view: EditorView) {
-    let open = this.getOpenFile(uri)
-    if (!open) return
-    let idx = open.using.indexOf(view)
-    if (idx < 0) return
-    open.using.splice(idx, 1)
-    if (!open.using.length) {
-      this.openFiles = this.openFiles.filter(f => f != open)
-      this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
-    }
-  }
-
-  /// @internal
-  sync(editor?: EditorView) {
-    for (let file of this.openFiles) {
-      let main = file.mainEditor(editor)
-      let plugin = main.plugin(lspPlugin)
-      if (!plugin) continue
-      let {fileState} = plugin
-      if (!fileState.changes.empty || fileState.syncedVersion != file.version) {
-        for (let mapping of this.activeMappings) {
-          let record = mapping.mappings.get(file.uri)
-          if (record) {
-            if (record.version == file.version) {
-              record.changes = record.changes.composeDesc(fileState.changes)
-              record.version++
-            } else {
-              mapping.mappings.delete(file.uri)
-            }
-          }
-        }
-        plugin.fileState = new FileState(file.version, main.state.doc)
-        if (this.supportSync) this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
-          textDocument: {uri: file.uri, version: file.version},
-          contentChanges: contentChangesFor(file, fileState, main.state.doc, this.supportSync == 2 /* Incremental */)
-        })
-        file.version++
-      }
     }
   }
 
@@ -475,17 +391,17 @@ export class LSPClient {
 const enum Sync { AlwaysIfSmaller = 1024 }
 
 function contentChangesFor(
-  file: OpenFile,
-  fileState: FileState,
-  doc: Text,
+  file: WorkspaceFile,
+  startDoc: Text,
+  changes: ChangeSet,
   supportInc: boolean
 ): lsp.TextDocumentContentChangeEvent[] {
-  if (!supportInc || file.version != fileState.syncedVersion || doc.length < Sync.AlwaysIfSmaller)
-    return [{text: doc.toString()}]
+  if (!supportInc || file.doc.length < Sync.AlwaysIfSmaller)
+    return [{text: file.doc.toString()}]
   let events: lsp.TextDocumentContentChangeEvent[] = []
-  fileState.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+  changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
     events.push({
-      range: {start: toPosition(fileState.startDoc, fromA), end: toPosition(fileState.startDoc, toA)},
+      range: {start: toPosition(startDoc, fromA), end: toPosition(startDoc, toA)},
       text: inserted.toString()
     })
   })

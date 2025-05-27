@@ -7,22 +7,13 @@ import {docToHTML, withContext} from "./text"
 import {toPosition, fromPosition} from "./pos"
 import {lspTheme} from "./theme"
 
-export class FileState {
-  constructor(
-    readonly syncedVersion: number,
-    readonly startDoc: Text,
-    readonly changes: ChangeSet = ChangeSet.empty(startDoc.length)
-  ) {}
-}
-
 /// A plugin that connects a given editor to a language server client.
 export class LSPPlugin {
   /// The client connection.
   client: LSPClient
   /// The URI of this file.
   uri: string
-  /// @internal
-  fileState: FileState
+  unsyncedChanges: ChangeSet
 
   /// @internal
   constructor(readonly view: EditorView, {client, uri, languageID}: {client: LSPClient, uri: string, languageID?: string}) {
@@ -32,7 +23,8 @@ export class LSPPlugin {
       let lang = view.state.facet(language)
       languageID = lang ? lang.name : ""
     }
-    this.fileState = new FileState(client.registerUser(uri, languageID, view), view.state.doc)
+    client.workspace.openFile(uri, languageID, view)
+    this.unsyncedChanges = ChangeSet.empty(view.state.doc.length)
   }
 
   /// Notify the server of any local changes that have been made to
@@ -62,6 +54,7 @@ export class LSPPlugin {
     return fromPosition(doc, pos)
   }
 
+  /// Display an error in this plugin's editor.
   reportError(message: any, err: any) {
     showDialog(this.view, {
       label: this.view.state.phrase(message) + ": " + (err.message || err),
@@ -70,17 +63,19 @@ export class LSPPlugin {
     })
   }
 
+  clear() {
+    this.unsyncedChanges = ChangeSet.empty(this.view.state.doc.length)
+  }
+
   /// @internal
   update(update: ViewUpdate) {
-    if (!update.changes.empty)
-      this.fileState = new FileState(this.fileState.syncedVersion,
-                                     this.fileState.startDoc,
-                                     this.fileState.changes.compose(update.changes))
+    if (update.docChanged)
+      this.unsyncedChanges = this.unsyncedChanges.compose(update.changes)
   }
 
   /// @internal
   destroy() {
-    this.client.unregisterUser(this.uri, this.view)
+    this.client.workspace.closeFile(this.uri, this.view)
   }
 
   /// Get the LSP plugin associated with an editor, if any.
