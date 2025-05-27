@@ -6,6 +6,7 @@ export {renameSymbol, renameKeymap} from "./rename"
 export {signatureHelp, nextSignature, prevSignature, showSignatureHelp} from "./signature"
 export {jumpToDefinition, jumpToDeclaration, jumpToTypeDefinition, jumpToImplementation, jumpToDefinitionKeymap} from "./definition"
 export {LSPPlugin} from "./plugin"
+export {Workspace, WorkspaceFile} from "./workspace"
 
 import {Extension} from "@codemirror/state"
 import {keymap} from "@codemirror/view"

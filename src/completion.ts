@@ -23,7 +23,7 @@ export function serverCompletion(config: {
 
 function getCompletions(plugin: LSPPlugin, pos: number, context: lsp.CompletionContext, abort?: CompletionContext) {
   if (plugin.client.hasCapability("completionProvider") === false) return Promise.resolve(null)
-  plugin.sync()
+  plugin.client.sync()
   let params: lsp.CompletionParams = {
     position: plugin.toPosition(pos),
     textDocument: {uri: plugin.uri},

@@ -16,7 +16,7 @@ function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
 export const formatDocument: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin) return false
-  plugin.sync()
+  plugin.client.sync()
   plugin.client.withMapping(mapping => getFormatting(plugin, {
     tabSize: getIndentUnit(view.state),
     insertSpaces: view.state.facet(indentUnit).indexOf("\t") < 0,

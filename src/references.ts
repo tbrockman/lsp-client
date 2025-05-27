@@ -13,7 +13,7 @@ function getReferences(plugin: LSPPlugin, pos: number) {
 export const findReferences: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin || !plugin.client.hasCapability("referencesProvider") === false) return false
-  plugin.sync()
+  plugin.client.sync()
   plugin.client.withMapping(mapping => getReferences(plugin, view.state.selection.main.head).then(response => {
     if (!response) return
     

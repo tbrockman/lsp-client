@@ -27,14 +27,6 @@ export class LSPPlugin {
     this.unsyncedChanges = ChangeSet.empty(view.state.doc.length)
   }
 
-  /// Notify the server of any local changes that have been made to
-  /// open documents. You'll want to call this before most types of
-  /// requests, to make sure the server isn't working with outdated
-  /// information.
-  sync() {
-    this.client.sync(this.view)
-  }
-
   /// Render a doc string from the server to HTML.
   docToHTML(value: string | lsp.MarkupContent, defaultKind: lsp.MarkupKind = "plaintext") {
     let html = withContext(this.view, this.client.config.highlightLanguage, () => docToHTML(value, defaultKind))

@@ -3,40 +3,99 @@ import {EditorView} from "@codemirror/view"
 import {LSPClient} from "./client"
 import {LSPPlugin} from "./plugin"
 
+/// A file that is active in a workspace.
 export interface WorkspaceFile {
+  /// The file's unique URI.
   uri: string
+  /// The LSP language ID for the file's content.
   languageId: string
+  /// The current version of the file.
   version: number
+  /// The document corresponding to `this.version`. May be behind the
+  /// content of an editor, in which case both this and the version
+  /// should be updated when
+  /// [`syncFiles`](#lsp-client.Workspace.syncFiles) is called.
   doc: Text
+  /// Get an active editor view for this file, if there is one. With
+  /// workspaces that support multiple view on a file, `main`
+  /// indicates a preferred view.
   getView(main?: EditorView): EditorView | null
 }
 
-export interface WorkspaceFileUpdate {
+interface WorkspaceFileUpdate {
   file: WorkspaceFile
   prevDoc: Text
   changes: ChangeSet
 }
 
-// FIXME consider making this an abstract class
-export interface Workspace {
-  files: WorkspaceFile[]
-  getFile(uri: string) : WorkspaceFile | null
+/// Providing your own workspace class can provide more control over
+/// the way files are loaded and managed when interacting with the
+/// language server.
+export abstract class Workspace {
+  /// The files currently open in the workspace.
+  abstract files: WorkspaceFile[]
 
-  syncFiles(): readonly WorkspaceFileUpdate[]
+  /// The constructor, as called by the client when creating a
+  /// workspace.
+  constructor(readonly client: LSPClient) {}
 
-  requestFile(uri: string): WorkspaceFile | null | Promise<WorkspaceFile | null>
+  /// Find the open file with the given URI, if it exists. The default
+  /// implementation just looks it up in `this.files`.
+  getFile(uri: string) : WorkspaceFile | null {
+    return this.files.find(f => f.uri == uri) || null
+  }
 
-  /// Called when an editor is created for a file.
-  openFile(uri: string, languageId: string, view: EditorView): void
-  closeFile(uri: string, view: EditorView): void
+  /// Check all open files for changes (usually from editors, but they
+  /// may also come from other sources). When a file is changed,
+  /// return a record that describes the changes, and update its
+  /// [`version`](#lsp-client.WorkspaceFile.version) and
+  /// [`doc`](#lsp-client.WorkspaceFile.doc) properties to reflect the
+  /// new version.
+  abstract syncFiles(): readonly WorkspaceFileUpdate[]
 
-  connected(): void
-  disconnected(): void
+  /// Called to request that the workspace open a file. The default
+  /// implementation simply returns null.
+  requestFile(uri: string): WorkspaceFile | null | Promise<WorkspaceFile | null> {
+    return null
+  }
 
-  createFile(uri: string): void
-  renameFile(uri: string, newURI: string): void
-  deleteFile(uri: string): void
-  updateFile(uri: string, update: TransactionSpec): void
+  /// Called when an editor is created for a file. The implementation
+  /// should track the file in
+  /// [`this.files`](#lsp-client.Workspace.files) and, if it wasn't
+  /// open already, call
+  /// [`LSPClient.didOpen`](#lsp-client.LSPClient.didOpen).
+  abstract openFile(uri: string, languageId: string, view: EditorView): void
+
+  /// Called when an editor holding this file is destroyed or
+  /// reconfigured to no longer hold it. The implementation should
+  /// track this and, when it closes the file, make sure to call
+  /// [`LSPClient.didOpen`](#lsp-client.LSPClient.didClose).
+  abstract closeFile(uri: string, view: EditorView): void
+
+  /// Called when the client for this workspace is connected. The
+  /// default implementation calls
+  /// [`LSPClient.didOpen`](#lsp-client.LSPClient.didOpen) on all open
+  /// files.
+  connected(): void {
+    for (let file of this.files) this.client.didOpen(file)
+  }
+
+  /// Called when the client for this workspace is disconnected. The
+  /// default implementation does nothing.
+  disconnected(): void {}
+
+  /// FIXME document or remove
+  createFile(uri: string): void {}
+  renameFile(uri: string, newURI: string): void {}
+  deleteFile(uri: string): void {}
+
+  /// Called when a server-initiated change to a file is applied. The
+  /// default implementation simply dispatches the update to the
+  /// file's view, if the file is open and has a view.
+  updateFile(uri: string, update: TransactionSpec): void {
+    let file = this.getFile(uri)
+    if (file) file.getView()?.dispatch(update)
+  }
 
   /// When the client needs to put a file other than the one loaded in
   /// the current editor in front of the user, for example in
@@ -44,7 +103,10 @@ export interface Workspace {
   /// this function. It should make sure to create or find an editor
   /// with the file and make it visible to the user, or return null if
   /// this isn't possible.
-  displayFile(uri: string): Promise<EditorView | null>
+  displayFile(uri: string): Promise<EditorView | null> {
+    let file = this.getFile(uri)
+    return Promise.resolve(file ? file.getView() : null)
+  }
 }
 
 class DefaultWorkspaceFile implements WorkspaceFile {
@@ -57,29 +119,13 @@ class DefaultWorkspaceFile implements WorkspaceFile {
   getView() { return this.view }
 }
 
-export class DefaultWorkspace implements Workspace {
+export class DefaultWorkspace extends Workspace {
   files: DefaultWorkspaceFile[] = []
   private fileVersions: {[uri: string]: number} = Object.create(null)
-
-  constructor(readonly client: LSPClient) {}
-
-  getFile(uri: string) {
-    return this.files.find(f => f.uri == uri) || null
-  }
-
-  requestFile(uri: string): WorkspaceFile | null | Promise<WorkspaceFile | null> {
-    return null
-  }
 
   nextFileVersion(uri: string) {
     return this.fileVersions[uri] = (this.fileVersions[uri] ?? -1) + 1
   }
-
-  connected() {
-    for (let file of this.files) this.client.didOpen(file)
-  }
-
-  disconnected() {}
 
   syncFiles() {
     let result: WorkspaceFileUpdate[] = []
@@ -111,19 +157,5 @@ export class DefaultWorkspace implements Workspace {
       this.files = this.files.filter(f => f != file)
       this.client.didClose(uri)
     }
-  }
-
-  createFile(uri: string): void {}
-  renameFile(uri: string, newURI: string): void {}
-  deleteFile(uri: string): void {}
-
-  updateFile(uri: string, update: TransactionSpec): void {
-    let file = this.getFile(uri)
-    if (file) file.view.dispatch(update)
-  }
-
-  displayFile(uri: string) {
-    let file = this.getFile(uri)
-    return Promise.resolve(file ? file.view : null)
   }
 }

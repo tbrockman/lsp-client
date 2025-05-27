@@ -24,7 +24,7 @@ function ed(client: LSPClient, conf: EditorViewConfig, uri = URI) {
 }
 
 function sync(cm: EditorView) {
-  LSPPlugin.get(cm)!.sync()
+  LSPPlugin.get(cm)!.client.sync()
 }
 
 function wait(ms: number = 2) {

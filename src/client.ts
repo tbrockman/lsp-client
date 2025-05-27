@@ -23,7 +23,6 @@ class Request<Result> {
   }
 }
 
-/// FIXME make it possible to enable more capabilities via config
 const clientCapabilities: lsp.ClientCapabilities = {
   general: {
     markdown: {
@@ -361,13 +360,28 @@ export class LSPClient {
     return this.serverCapabilities ? !!this.serverCapabilities[name] : null
   }
 
-  withMapping<T>(f: (mapping: WorkspaceMapping) => Promise<T>): Promise<T> {
+  /// Create a [workspace mapping](#lsp-client.WorkspaceMapping) that
+  /// tracks changes to files in this client's workspace. Make sure
+  /// you call [`destroy`](#lsp-client.WorkspaceMapping.destroy) on
+  /// the mapping when you're done with it.
+  workspaceMapping() {
     let mapping = new WorkspaceMapping(this)
     this.activeMappings.push(mapping)
+    return mapping
+  }
+
+  /// Run the given promise with a [workspace
+  /// mapping](#lsp-client.WorkspaceMapping) active. Automatically
+  /// release the mapping when the promise resolves or rejects.
+  withMapping<T>(f: (mapping: WorkspaceMapping) => Promise<T>): Promise<T> {
+    let mapping = this.workspaceMapping()
     return f(mapping).finally(() => mapping.destroy())
   }
 
-  /// @internal FIXME document
+  /// Push any [pending changes](#lsp-client.Workspace.syncFiles) in
+  /// the open files to the server. You'll want to call this before
+  /// most types of requests, to make sure the server isn't working
+  /// with outdated information.
   sync() {
     for (let {file, changes, prevDoc} of this.workspace.syncFiles()) {
       for (let mapping of this.activeMappings)

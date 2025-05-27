@@ -79,7 +79,13 @@ new EditorView({
 
 @LSPPlugin
 
-## Extensions
+### Workspaces
+
+@Workspace
+
+@WorkspaceFile
+
+### Extensions
 
 @languageServerSupport
 

@@ -49,7 +49,7 @@ function doRename(view: EditorView, newName: string) {
   const word = view.state.wordAt(view.state.selection.main.head)
   if (!plugin || !word) return false
 
-  plugin.sync()
+  plugin.client.sync()
   plugin.client.withMapping(mapping => getRename(plugin, word.from, newName).then(response => {
     if (!response) return
     uris: for (let uri in response.changes) {

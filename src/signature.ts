@@ -6,7 +6,7 @@ import {LSPPlugin} from "./plugin"
 
 function getSignatureHelp(plugin: LSPPlugin, pos: number, context: lsp.SignatureHelpContext) {
   if (plugin.client.hasCapability("signatureHelpProvider") === false) return Promise.resolve(null)
-  plugin.sync()
+  plugin.client.sync()
   return plugin.client.request<lsp.SignatureHelpParams, lsp.SignatureHelp | null>("textDocument/signatureHelp", {
     context,
     position: plugin.toPosition(pos),

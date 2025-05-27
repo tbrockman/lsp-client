@@ -89,7 +89,10 @@ use.</p>
   <code><strong><a href="#user-content-lspclient.transport">transport</a></strong>: <a href="#user-content-transport">Transport</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
 <dd><p>The transport active in the client, if it is connected.</p>
-</dd><dt id="user-content-lspclient.servercapabilities">
+</dd><dt id="user-content-lspclient.workspace">
+  <code><strong><a href="#user-content-lspclient.workspace">workspace</a></strong>: <a href="#user-content-workspace">Workspace</a></code></dt>
+
+<dd></dd><dt id="user-content-lspclient.servercapabilities">
   <code><strong><a href="#user-content-lspclient.servercapabilities">serverCapabilities</a></strong>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#serverCapabilities">ServerCapabilities</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
 <dd><p>The capabilities advertised by the server. Will be null when not
@@ -102,6 +105,9 @@ replaced by a new promise object when you call <code>disconnect</code>.</p>
 </dd><dt id="user-content-lspclient.config">
   <code><strong><a href="#user-content-lspclient.config">config</a></strong>: <a href="#user-content-lspclientconfig">LSPClientConfig</a></code></dt>
 
+<dd></dd><dt id="user-content-lspclient.connected">
+  <code><strong><a href="#user-content-lspclient.connected">connected</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code></dt>
+
 <dd></dd><dt id="user-content-lspclient.connect">
   <code><strong><a href="#user-content-lspclient.connect">connect</a></strong>(<a id="user-content-lspclient.connect^transport" href="#user-content-lspclient.connect^transport">transport</a>: <a href="#user-content-transport">Transport</a>) → <a href="#user-content-lspclient">LSPClient</a></code></dt>
 
@@ -113,7 +119,13 @@ successful.</p>
   <code><strong><a href="#user-content-lspclient.disconnect">disconnect</a></strong>()</code></dt>
 
 <dd><p>Disconnect the client from the server.</p>
-</dd><dt id="user-content-lspclient.request">
+</dd><dt id="user-content-lspclient.didopen">
+  <code><strong><a href="#user-content-lspclient.didopen">didOpen</a></strong>(<a id="user-content-lspclient.didopen^file" href="#user-content-lspclient.didopen^file">file</a>: <a href="#user-content-workspacefile">WorkspaceFile</a>)</code></dt>
+
+<dd></dd><dt id="user-content-lspclient.didclose">
+  <code><strong><a href="#user-content-lspclient.didclose">didClose</a></strong>(<a id="user-content-lspclient.didclose^uri" href="#user-content-lspclient.didclose^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
+
+<dd></dd><dt id="user-content-lspclient.request">
   <code><strong><a href="#user-content-lspclient.request">request</a></strong>&lt;<a id="user-content-lspclient.request^params" href="#user-content-lspclient.request^params">Params</a>, <a id="user-content-lspclient.request^result" href="#user-content-lspclient.request^result">Result</a>&gt;(<a id="user-content-lspclient.request^method" href="#user-content-lspclient.request^method">method</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.request^params" href="#user-content-lspclient.request^params">params</a>: <a href="#user-content-lspclient.request^params">Params</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.request^result">Result</a>&gt;</code></dt>
 
 <dd><p>Make a request to the server. Returns a promise that resolves to
@@ -124,13 +136,6 @@ package for the type parameters.</p>
 <a href="#user-content-lspclient.sync">synchronizing</a> state before the
 request and correctly handling state drift caused by local
 changes that happend during the request.</p>
-</dd><dt id="user-content-lspclient.mappedrequest">
-  <code><strong><a href="#user-content-lspclient.mappedrequest">mappedRequest</a></strong>&lt;<a id="user-content-lspclient.mappedrequest^params" href="#user-content-lspclient.mappedrequest^params">Params</a>, <a id="user-content-lspclient.mappedrequest^result" href="#user-content-lspclient.mappedrequest^result">Result</a>&gt;(<a id="user-content-lspclient.mappedrequest^method" href="#user-content-lspclient.mappedrequest^method">method</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.mappedrequest^params" href="#user-content-lspclient.mappedrequest^params">params</a>: <a href="#user-content-lspclient.mappedrequest^params">Params</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;{response: <a href="#user-content-lspclient.mappedrequest^result">Result</a>}&gt;</code></dt>
-
-<dd><p>Make a request that tracks local changes that happen during the
-request. The returned promise resolves to both a response and an
-object that tells you about document changes that happened
-during the request.</p>
 </dd><dt id="user-content-lspclient.notification">
   <code><strong><a href="#user-content-lspclient.notification">notification</a></strong>&lt;<a id="user-content-lspclient.notification^params" href="#user-content-lspclient.notification^params">Params</a>&gt;(<a id="user-content-lspclient.notification^method" href="#user-content-lspclient.notification^method">method</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.notification^params" href="#user-content-lspclient.notification^params">params</a>: <a href="#user-content-lspclient.notification^params">Params</a>)</code></dt>
 
@@ -146,6 +151,26 @@ during the request.</p>
 <dd><p>Check whether the server has a given property in its capability
 object. Returns null when the connection hasn't finished
 initializing yet.</p>
+</dd><dt id="user-content-lspclient.workspacemapping">
+  <code><strong><a href="#user-content-lspclient.workspacemapping">workspaceMapping</a></strong>() → {addChanges: fn(<a id="user-content-lspclient.workspacemapping^returns.addchanges^uri" href="#user-content-lspclient.workspacemapping^returns.addchanges^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.workspacemapping^returns.addchanges^changes" href="#user-content-lspclient.workspacemapping^returns.addchanges^changes">changes</a>: <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a>)}</code></dt>
+
+<dd><p>Create a <a href="#user-content-workspacemapping">workspace mapping</a> that
+tracks changes to files in this client's workspace. Make sure
+you call <a href="#user-content-workspacemapping.destroy"><code>destroy</code></a> on
+the mapping when you're done with it.</p>
+</dd><dt id="user-content-lspclient.withmapping">
+  <code><strong><a href="#user-content-lspclient.withmapping">withMapping</a></strong>&lt;<a id="user-content-lspclient.withmapping^t" href="#user-content-lspclient.withmapping^t">T</a>&gt;(<a id="user-content-lspclient.withmapping^f" href="#user-content-lspclient.withmapping^f">f</a>: fn(<a id="user-content-lspclient.withmapping^f^mapping" href="#user-content-lspclient.withmapping^f^mapping">mapping</a>: {addChanges: fn(<a id="user-content-lspclient.withmapping^f^mapping.addchanges^uri" href="#user-content-lspclient.withmapping^f^mapping.addchanges^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.withmapping^f^mapping.addchanges^changes" href="#user-content-lspclient.withmapping^f^mapping.addchanges^changes">changes</a>: <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a>)}) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;</code></dt>
+
+<dd><p>Run the given promise with a <a href="#user-content-workspacemapping">workspace
+mapping</a> active. Automatically
+release the mapping when the promise resolves or rejects.</p>
+</dd><dt id="user-content-lspclient.sync">
+  <code><strong><a href="#user-content-lspclient.sync">sync</a></strong>()</code></dt>
+
+<dd><p>Push any <a href="#user-content-workspace.syncfiles">pending changes</a> in
+the open files to the server. You'll want to call this before
+most types of requests, to make sure the server isn't working
+with outdated information.</p>
 </dd></dl>
 
 </dd>
@@ -160,6 +185,14 @@ initializing yet.</p>
   <code><strong><a href="#user-content-lspclientconfig.rooturi">rootUri</a></strong>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
 <dd><p>The project root URI passed to the server, when necessary.</p>
+</dd><dt id="user-content-lspclientconfig.workspace">
+  <code><strong><a href="#user-content-lspclientconfig.workspace">workspace</a></strong>&#8288;?: fn(<a id="user-content-lspclientconfig.workspace^client" href="#user-content-lspclientconfig.workspace^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>) → <a href="#user-content-workspace">Workspace</a></code></dt>
+
+<dd><p>An optional function to create a
+<a href="#user-content-workspace">workspace</a> object for the client to use.
+When not given, this will default to a simple workspace that
+only opens files that have an active editor, and only allows one
+editor per file.</p>
 </dd><dt id="user-content-lspclientconfig.timeout">
   <code><strong><a href="#user-content-lspclientconfig.timeout">timeout</a></strong>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code></dt>
 
@@ -182,24 +215,6 @@ code embedded in the Markdown text when its language tag matches
 the name of the language used by the editor. You can provide a
 function here that returns a CodeMirror language object for a
 given language tag to support morelanguages.</p>
-</dd><dt id="user-content-lspclientconfig.handlechangeinfile">
-  <code><strong><a href="#user-content-lspclientconfig.handlechangeinfile">handleChangeInFile</a></strong>&#8288;?: fn(<a id="user-content-lspclientconfig.handlechangeinfile^uri" href="#user-content-lspclientconfig.handlechangeinfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclientconfig.handlechangeinfile^changes" href="#user-content-lspclientconfig.handlechangeinfile^changes">changes</a>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#textEdit">TextEdit</a>[]) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code></dt>
-
-<dd><p>Some actions, like symbol rename, can cause the server to return
-changes in files other than the one the active editor has open.
-When this happens, the client will try to call this handler,
-when given, to process such changes. If it is not provided, or
-it returns false, and another editor view has the given URI
-open, the changes will be dispatched to the other editor.</p>
-</dd><dt id="user-content-lspclientconfig.displayfile">
-  <code><strong><a href="#user-content-lspclientconfig.displayfile">displayFile</a></strong>&#8288;?: fn(<a id="user-content-lspclientconfig.displayfile^uri" href="#user-content-lspclientconfig.displayfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
-
-<dd><p>When the client needs to put a file other than the one loaded in
-the current editor in front of the user, for example in
-<a href="#user-content-jumptodefinition"><code>jumpToDefinition</code></a>, it will call
-this function. It should make sure to create or find an editor
-with the file and make it visible to the user, or return null if
-this isn't possible.</p>
 </dd><dt id="user-content-lspclientconfig.notificationhandlers">
   <code><strong><a href="#user-content-lspclientconfig.notificationhandlers">notificationHandlers</a></strong>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>&lt;fn(<a id="user-content-lspclientconfig.notificationhandlers^client" href="#user-content-lspclientconfig.notificationhandlers^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>, <a id="user-content-lspclientconfig.notificationhandlers^params" href="#user-content-lspclientconfig.notificationhandlers^params">params</a>: any) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>&gt;</code></dt>
 
@@ -256,17 +271,13 @@ broken somehow.</p>
   <code><strong><a href="#user-content-lspplugin.uri">uri</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
 <dd><p>The URI of this file.</p>
-</dd><dt id="user-content-lspplugin.view">
+</dd><dt id="user-content-lspplugin.unsyncedchanges">
+  <code><strong><a href="#user-content-lspplugin.unsyncedchanges">unsyncedChanges</a></strong>: <a href="https://codemirror.net/docs/ref#state.ChangeSet">ChangeSet</a></code></dt>
+
+<dd></dd><dt id="user-content-lspplugin.view">
   <code><strong><a href="#user-content-lspplugin.view">view</a></strong>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a></code></dt>
 
-<dd></dd><dt id="user-content-lspplugin.sync">
-  <code><strong><a href="#user-content-lspplugin.sync">sync</a></strong>()</code></dt>
-
-<dd><p>Notify the server of any local changes that have been made to
-open documents. You'll want to call this before most types of
-requests, to make sure the server isn't working with outdated
-information.</p>
-</dd><dt id="user-content-lspplugin.doctohtml">
+<dd></dd><dt id="user-content-lspplugin.doctohtml">
   <code><strong><a href="#user-content-lspplugin.doctohtml">docToHTML</a></strong>(<a id="user-content-lspplugin.doctohtml^value" href="#user-content-lspplugin.doctohtml^value">value</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a> | <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#markupContent">MarkupContent</a>, <a id="user-content-lspplugin.doctohtml^defaultkind" href="#user-content-lspplugin.doctohtml^defaultkind">defaultKind</a>&#8288;?: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#markupKind">MarkupKind</a> = &quot;plaintext&quot;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
 <dd><p>Render a doc string from the server to HTML.</p>
@@ -282,6 +293,10 @@ document, but can be given another one.</p>
 document offset.</p>
 </dd><dt id="user-content-lspplugin.reporterror">
   <code><strong><a href="#user-content-lspplugin.reporterror">reportError</a></strong>(<a id="user-content-lspplugin.reporterror^message" href="#user-content-lspplugin.reporterror^message">message</a>: any, <a id="user-content-lspplugin.reporterror^err" href="#user-content-lspplugin.reporterror^err">err</a>: any)</code></dt>
+
+<dd><p>Display an error in this plugin's editor.</p>
+</dd><dt id="user-content-lspplugin.clear">
+  <code><strong><a href="#user-content-lspplugin.clear">clear</a></strong>()</code></dt>
 
 <dd></dd><dt id="user-content-lspplugin^get">
   <code>static <strong><a href="#user-content-lspplugin^get">get</a></strong>(<a id="user-content-lspplugin^get^view" href="#user-content-lspplugin^get^view">view</a>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>) → <a href="#user-content-lspplugin">LSPPlugin</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
@@ -302,7 +317,140 @@ a specific ID as a third parameter.</p>
 
 </dd>
 </dl>
-<h2>Extensions</h2>
+<h3>Workspaces</h3>
+<dl>
+<dt id="user-content-workspace">
+  <h4>
+    <code>abstract class</code>
+    <a href="#user-content-workspace">Workspace</a></h4>
+</dt>
+
+<dd><p>Providing your own workspace class can provide more control over
+the way files are loaded and managed when interacting with the
+language server.</p>
+<dl><dt id="user-content-workspace.constructor">
+  <code>new <strong><a href="#user-content-workspace.constructor">Workspace</a></strong>(<a id="user-content-workspace.constructor^client" href="#user-content-workspace.constructor^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>)</code></dt>
+
+<dd><p>The constructor, as called by the client when creating a
+workspace.</p>
+</dd><dt id="user-content-workspace.files">
+  <code>abstract <strong><a href="#user-content-workspace.files">files</a></strong>: <a href="#user-content-workspacefile">WorkspaceFile</a>[]</code></dt>
+
+<dd><p>The files currently open in the workspace.</p>
+</dd><dt id="user-content-workspace.client">
+  <code><strong><a href="#user-content-workspace.client">client</a></strong>: <a href="#user-content-lspclient">LSPClient</a></code></dt>
+
+<dd></dd><dt id="user-content-workspace.getfile">
+  <code><strong><a href="#user-content-workspace.getfile">getFile</a></strong>(<a id="user-content-workspace.getfile^uri" href="#user-content-workspace.getfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+
+<dd><p>Find the open file with the given URI, if it exists. The default
+implementation just looks it up in <code>this.files</code>.</p>
+</dd><dt id="user-content-workspace.syncfiles">
+  <code>abstract <strong><a href="#user-content-workspace.syncfiles">syncFiles</a></strong>() → readonly {file: <a href="#user-content-workspacefile">WorkspaceFile</a>, prevDoc: <a href="https://codemirror.net/docs/ref#state.Text">Text</a>, changes: <a href="https://codemirror.net/docs/ref#state.ChangeSet">ChangeSet</a>}[]</code></dt>
+
+<dd><p>Check all open files for changes (usually from editors, but they
+may also come from other sources). When a file is changed,
+return a record that describes the changes, and update its
+<a href="#user-content-workspacefile.version"><code>version</code></a> and
+<a href="#user-content-workspacefile.doc"><code>doc</code></a> properties to reflect the
+new version.</p>
+</dd><dt id="user-content-workspace.requestfile">
+  <code><strong><a href="#user-content-workspace.requestfile">requestFile</a></strong>(<a id="user-content-workspace.requestfile^uri" href="#user-content-workspace.requestfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a>&gt; | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+
+<dd><p>Called to request that the workspace open a file. The default
+implementation simply returns null.</p>
+</dd><dt id="user-content-workspace.openfile">
+  <code>abstract <strong><a href="#user-content-workspace.openfile">openFile</a></strong>(<a id="user-content-workspace.openfile^uri" href="#user-content-workspace.openfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.openfile^languageid" href="#user-content-workspace.openfile^languageid">languageId</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.openfile^view" href="#user-content-workspace.openfile^view">view</a>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>)</code></dt>
+
+<dd><p>Called when an editor is created for a file. The implementation
+should track the file in
+<a href="#user-content-workspace.files"><code>this.files</code></a> and, if it wasn't
+open already, call
+<a href="#user-content-lspclient.didopen"><code>LSPClient.didOpen</code></a>.</p>
+</dd><dt id="user-content-workspace.closefile">
+  <code>abstract <strong><a href="#user-content-workspace.closefile">closeFile</a></strong>(<a id="user-content-workspace.closefile^uri" href="#user-content-workspace.closefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.closefile^view" href="#user-content-workspace.closefile^view">view</a>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>)</code></dt>
+
+<dd><p>Called when an editor holding this file is destroyed or
+reconfigured to no longer hold it. The implementation should
+track this and, when it closes the file, make sure to call
+<a href="#user-content-lspclient.didclose"><code>LSPClient.didOpen</code></a>.</p>
+</dd><dt id="user-content-workspace.connected">
+  <code><strong><a href="#user-content-workspace.connected">connected</a></strong>()</code></dt>
+
+<dd><p>Called when the client for this workspace is connected. The
+default implementation calls
+<a href="#user-content-lspclient.didopen"><code>LSPClient.didOpen</code></a> on all open
+files.</p>
+</dd><dt id="user-content-workspace.disconnected">
+  <code><strong><a href="#user-content-workspace.disconnected">disconnected</a></strong>()</code></dt>
+
+<dd><p>Called when the client for this workspace is disconnected. The
+default implementation does nothing.</p>
+</dd><dt id="user-content-workspace.createfile">
+  <code><strong><a href="#user-content-workspace.createfile">createFile</a></strong>(<a id="user-content-workspace.createfile^uri" href="#user-content-workspace.createfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
+
+<dd><p>FIXME document or remove</p>
+</dd><dt id="user-content-workspace.renamefile">
+  <code><strong><a href="#user-content-workspace.renamefile">renameFile</a></strong>(<a id="user-content-workspace.renamefile^uri" href="#user-content-workspace.renamefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.renamefile^newuri" href="#user-content-workspace.renamefile^newuri">newURI</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
+
+<dd></dd><dt id="user-content-workspace.deletefile">
+  <code><strong><a href="#user-content-workspace.deletefile">deleteFile</a></strong>(<a id="user-content-workspace.deletefile^uri" href="#user-content-workspace.deletefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
+
+<dd></dd><dt id="user-content-workspace.updatefile">
+  <code><strong><a href="#user-content-workspace.updatefile">updateFile</a></strong>(<a id="user-content-workspace.updatefile^uri" href="#user-content-workspace.updatefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.updatefile^update" href="#user-content-workspace.updatefile^update">update</a>: <a href="https://codemirror.net/docs/ref#state.TransactionSpec">TransactionSpec</a>)</code></dt>
+
+<dd><p>Called when a server-initiated change to a file is applied. The
+default implementation simply dispatches the update to the
+file's view, if the file is open and has a view.</p>
+</dd><dt id="user-content-workspace.displayfile">
+  <code><strong><a href="#user-content-workspace.displayfile">displayFile</a></strong>(<a id="user-content-workspace.displayfile^uri" href="#user-content-workspace.displayfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a>&gt;</code></dt>
+
+<dd><p>When the client needs to put a file other than the one loaded in
+the current editor in front of the user, for example in
+<a href="#user-content-jumptodefinition"><code>jumpToDefinition</code></a>, it will call
+this function. It should make sure to create or find an editor
+with the file and make it visible to the user, or return null if
+this isn't possible.</p>
+</dd></dl>
+
+</dd>
+<dt id="user-content-workspacefile">
+  <h4>
+    <code>interface</code>
+    <a href="#user-content-workspacefile">WorkspaceFile</a></h4>
+</dt>
+
+<dd><p>A file that is active in a workspace.</p>
+<dl><dt id="user-content-workspacefile.uri">
+  <code><strong><a href="#user-content-workspacefile.uri">uri</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
+
+<dd><p>The file's unique URI.</p>
+</dd><dt id="user-content-workspacefile.languageid">
+  <code><strong><a href="#user-content-workspacefile.languageid">languageId</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
+
+<dd><p>The LSP language ID for the file's content.</p>
+</dd><dt id="user-content-workspacefile.version">
+  <code><strong><a href="#user-content-workspacefile.version">version</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code></dt>
+
+<dd><p>The current version of the file.</p>
+</dd><dt id="user-content-workspacefile.doc">
+  <code><strong><a href="#user-content-workspacefile.doc">doc</a></strong>: <a href="https://codemirror.net/docs/ref#state.Text">Text</a></code></dt>
+
+<dd><p>The document corresponding to <code>this.version</code>. May be behind the
+content of an editor, in which case both this and the version
+should be updated when
+<a href="#user-content-workspace.syncfiles"><code>syncFiles</code></a> is called.</p>
+</dd><dt id="user-content-workspacefile.getview">
+  <code><strong><a href="#user-content-workspacefile.getview">getView</a></strong>(<a id="user-content-workspacefile.getview^main" href="#user-content-workspacefile.getview^main">main</a>&#8288;?: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>) → <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+
+<dd><p>Get an active editor view for this file, if there is one. With
+workspaces that support multiple view on a file, <code>main</code>
+indicates a preferred view.</p>
+</dd></dl>
+
+</dd>
+</dl>
+<h3>Extensions</h3>
 <dl>
 <dt id="user-content-languageserversupport">
   <code><strong><a href="#user-content-languageserversupport">languageServerSupport</a></strong>(<a id="user-content-languageserversupport^client" href="#user-content-languageserversupport^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>, <a id="user-content-languageserversupport^uri" href="#user-content-languageserversupport^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-languageserversupport^languageid" href="#user-content-languageserversupport^languageid">languageID</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#state.Extension">Extension</a></code></dt>

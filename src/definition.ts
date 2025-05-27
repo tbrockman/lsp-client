@@ -33,7 +33,7 @@ function getImplementation(plugin: LSPPlugin, pos: number) {
 function jumpToOrigin(view: EditorView, type: {get: typeof getDefinition, capability: keyof lsp.ServerCapabilities}): boolean {
   const plugin = LSPPlugin.get(view)
   if (!plugin || plugin.client.hasCapability(type.capability) === false) return false
-  plugin.sync()
+  plugin.client.sync()
   plugin.client.withMapping(mapping => type.get(plugin, view.state.selection.main.head).then(response => {
     if (!response) return
     let loc = Array.isArray(response) ? response[0] : response
