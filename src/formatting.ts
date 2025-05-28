@@ -46,7 +46,7 @@ export const formatDocument: Command = view => {
 }
 
 /// A keymap that binds Shift-Alt-f to
-/// [`formatDocument`](#lsp-server.formatDocument).
+/// [`formatDocument`](#lsp-client.formatDocument).
 export const formatKeymap: readonly KeyBinding[] = [
   {key: "Shift-Alt-f", run: formatDocument, preventDefault: true}
 ]

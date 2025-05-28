@@ -51,7 +51,7 @@ function prefixRegexp(items: readonly lsp.CompletionItem[]) {
 
 /// A completion source that requests completions from a language
 /// server. Only works when [server
-/// support](#lsp-server.languageServerSupport) is active in the
+/// support](#lsp-client.languageServerSupport) is active in the
 /// editor.
 export const serverCompletionSource: CompletionSource = context => {
   const plugin = context.view && LSPPlugin.get(context.view)

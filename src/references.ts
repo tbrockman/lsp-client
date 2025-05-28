@@ -15,6 +15,9 @@ function getReferences(plugin: LSPPlugin, pos: number) {
 
 type ReferenceLocation = {file: WorkspaceFile, range: lsp.Range}
 
+/// Ask the server to locate all references to the symbol at the
+/// cursor. When the server can provide such references, show them as
+/// a list in a panel.
 export const findReferences: Command = view => {
   const plugin = LSPPlugin.get(view)
   if (!plugin || plugin.client.hasCapability("referencesProvider") === false) return false
@@ -37,6 +40,7 @@ export const findReferences: Command = view => {
   return true
 }
 
+/// Close the reference panel, if it is open.
 export const closeReferencePanel: Command = view => {
   if (!view.state.field(referencePanel, false)) return false
   view.dispatch({effects: setReferencePanel.of(null)})

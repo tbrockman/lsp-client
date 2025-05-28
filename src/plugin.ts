@@ -13,10 +13,13 @@ export class LSPPlugin {
   client: LSPClient
   /// The URI of this file.
   uri: string
-  unsyncedChanges: ChangeSet
 
   /// @internal
-  constructor(readonly view: EditorView, {client, uri, languageID}: {client: LSPClient, uri: string, languageID?: string}) {
+  constructor(
+    /// The editor view that this plugin belongs to.
+    readonly view: EditorView,
+    {client, uri, languageID}: {client: LSPClient, uri: string, languageID?: string}
+  ) {
     this.client = client
     this.uri = uri
     if (!languageID) {
@@ -55,6 +58,13 @@ export class LSPPlugin {
     })
   }
 
+  /// The changes accumulated in this editor that have not been sent
+  /// to the server yet.
+  unsyncedChanges: ChangeSet
+
+  /// Reset the [unsynced
+  /// changes](#lsp-client.LSPPlugin.unsyncedChanges). Should probably
+  /// only be called by a [workspace](#lsp-client.Workspace).
   clear() {
     this.unsyncedChanges = ChangeSet.empty(this.view.state.doc.length)
   }

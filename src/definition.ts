@@ -49,7 +49,7 @@ function jumpToOrigin(view: EditorView, type: {get: typeof getDefinition, capabi
 
 /// Jump to the definition of the symbol at the cursor. To support
 /// cross-file jumps, you'll need to implement
-/// [`LSPClientConfig.displayFile`](#lsp-client.LSPClientConfig.displayFile).
+/// [`Workspace.displayFile`](#lsp-client.Workspace.displayFile).
 export const jumpToDefinition: Command = view => jumpToOrigin(view, {
   get: getDefinition,
   capability: "definitionProvider"

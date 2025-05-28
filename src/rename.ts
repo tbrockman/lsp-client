@@ -16,8 +16,8 @@ function getRename(plugin: LSPPlugin, pos: number, newName: string) {
 ///
 /// Note that this may affect files other than the one loaded into
 /// this view. See the
-/// [`handleChangeInFile`](#lsp-client.LSPClientConfig.handleChangeInFile)
-/// option.
+/// [`Workspace.updateFile`](#lsp-client.Workspace.updateFile)
+/// method.
 export const renameSymbol: Command = view => {
   let wordRange = view.state.wordAt(view.state.selection.main.head)
   let plugin = LSPPlugin.get(view)
@@ -69,7 +69,7 @@ function doRename(view: EditorView, newName: string) {
   }))
 }
 
-/// A keymap that binds F2 to [`renameSymbol`](#lsp-server.renameSymbol).
+/// A keymap that binds F2 to [`renameSymbol`](#lsp-client.renameSymbol).
 export const renameKeymap: readonly KeyBinding[] = [
   {key: "F2", run: renameSymbol, preventDefault: true}
 ]

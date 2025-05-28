@@ -199,8 +199,9 @@ export type LSPClientConfig = {
 /// be explicitly [connected](#lsp-client.LSPClient.connect) before
 /// use.
 export class LSPClient {
-  /// The transport active in the client, if it is connected.
+  /// @internal
   transport: Transport | null = null
+  /// The client's [workspace](#lsp-client.Workspace).
   workspace: Workspace
   private nextReqID = 0
   private requests: Request<any>[] = []
@@ -217,13 +218,17 @@ export class LSPClient {
   private timeout: number
 
   /// Create a client object.
-  constructor(readonly config: LSPClientConfig = {}) {
+  constructor(
+    /// @internal
+    readonly config: LSPClientConfig = {}
+  ) {
     this.receiveMessage = this.receiveMessage.bind(this)
     this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
     this.timeout = config.timeout ?? 3000
     this.workspace = config.workspace ? config.workspace(this) : new DefaultWorkspace(this)
   }
 
+  /// Whether this client is connected (has a transport).
   get connected() { return !!this.transport }
 
   /// Connect this client to a server over the given transport. Will
@@ -258,6 +263,7 @@ export class LSPClient {
     this.workspace.disconnected()
   }
 
+  /// Send a `textDocument/didOpen` notification to the server.
   didOpen(file: WorkspaceFile) {
     this.notification<lsp.DidOpenTextDocumentParams>("textDocument/didOpen", {
       textDocument: {
@@ -269,6 +275,7 @@ export class LSPClient {
     })
   }
 
+  /// Send a `textDocument/didClose` notification to the server.
   didClose(uri: string) {
     this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
   }
@@ -354,17 +361,16 @@ export class LSPClient {
     if (found) this.notification("$/cancelRequest", found.id)
   }
 
-  /// Check whether the server has a given property in its capability
-  /// object. Returns null when the connection hasn't finished
-  /// initializing yet.
+  /// @internal
   hasCapability(name: keyof lsp.ServerCapabilities) {
     return this.serverCapabilities ? !!this.serverCapabilities[name] : null
   }
 
   /// Create a [workspace mapping](#lsp-client.WorkspaceMapping) that
-  /// tracks changes to files in this client's workspace. Make sure
-  /// you call [`destroy`](#lsp-client.WorkspaceMapping.destroy) on
-  /// the mapping when you're done with it.
+  /// tracks changes to files in this client's workspace, relative to
+  /// the moment where it was created. Make sure you call
+  /// [`destroy`](#lsp-client.WorkspaceMapping.destroy) on the mapping
+  /// when you're done with it.
   workspaceMapping() {
     let mapping = new WorkspaceMapping(this)
     this.activeMappings.push(mapping)

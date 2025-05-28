@@ -12,7 +12,7 @@ number of [examples](https://codemirror.net/examples/) and the
 [documentation](https://codemirror.net/docs/).
 
 This code is released under an
-[MIT license](https://github.com/codemirror/lsp-server/tree/main/LICENSE).
+[MIT license](https://github.com/codemirror/lsp-client/tree/main/LICENSE).
 
 We aim to be an inclusive, welcoming community. To make that explicit,
 we have a [code of
@@ -85,14 +85,11 @@ use.</p>
   <code>new <strong><a href="#user-content-lspclient.constructor">LSPClient</a></strong>(<a id="user-content-lspclient.constructor^config" href="#user-content-lspclient.constructor^config">config</a>&#8288;?: <a href="#user-content-lspclientconfig">LSPClientConfig</a> = {})</code></dt>
 
 <dd><p>Create a client object.</p>
-</dd><dt id="user-content-lspclient.transport">
-  <code><strong><a href="#user-content-lspclient.transport">transport</a></strong>: <a href="#user-content-transport">Transport</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
-
-<dd><p>The transport active in the client, if it is connected.</p>
 </dd><dt id="user-content-lspclient.workspace">
   <code><strong><a href="#user-content-lspclient.workspace">workspace</a></strong>: <a href="#user-content-workspace">Workspace</a></code></dt>
 
-<dd></dd><dt id="user-content-lspclient.servercapabilities">
+<dd><p>The client's <a href="#user-content-workspace">workspace</a>.</p>
+</dd><dt id="user-content-lspclient.servercapabilities">
   <code><strong><a href="#user-content-lspclient.servercapabilities">serverCapabilities</a></strong>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#serverCapabilities">ServerCapabilities</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
 <dd><p>The capabilities advertised by the server. Will be null when not
@@ -102,13 +99,11 @@ connected or initialized.</p>
 
 <dd><p>A promise that resolves once the client connection is initialized. Will be
 replaced by a new promise object when you call <code>disconnect</code>.</p>
-</dd><dt id="user-content-lspclient.config">
-  <code><strong><a href="#user-content-lspclient.config">config</a></strong>: <a href="#user-content-lspclientconfig">LSPClientConfig</a></code></dt>
-
-<dd></dd><dt id="user-content-lspclient.connected">
+</dd><dt id="user-content-lspclient.connected">
   <code><strong><a href="#user-content-lspclient.connected">connected</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code></dt>
 
-<dd></dd><dt id="user-content-lspclient.connect">
+<dd><p>Whether this client is connected (has a transport).</p>
+</dd><dt id="user-content-lspclient.connect">
   <code><strong><a href="#user-content-lspclient.connect">connect</a></strong>(<a id="user-content-lspclient.connect^transport" href="#user-content-lspclient.connect^transport">transport</a>: <a href="#user-content-transport">Transport</a>) → <a href="#user-content-lspclient">LSPClient</a></code></dt>
 
 <dd><p>Connect this client to a server over the given transport. Will
@@ -122,10 +117,12 @@ successful.</p>
 </dd><dt id="user-content-lspclient.didopen">
   <code><strong><a href="#user-content-lspclient.didopen">didOpen</a></strong>(<a id="user-content-lspclient.didopen^file" href="#user-content-lspclient.didopen^file">file</a>: <a href="#user-content-workspacefile">WorkspaceFile</a>)</code></dt>
 
-<dd></dd><dt id="user-content-lspclient.didclose">
+<dd><p>Send a <code>textDocument/didOpen</code> notification to the server.</p>
+</dd><dt id="user-content-lspclient.didclose">
   <code><strong><a href="#user-content-lspclient.didclose">didClose</a></strong>(<a id="user-content-lspclient.didclose^uri" href="#user-content-lspclient.didclose^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
 
-<dd></dd><dt id="user-content-lspclient.request">
+<dd><p>Send a <code>textDocument/didClose</code> notification to the server.</p>
+</dd><dt id="user-content-lspclient.request">
   <code><strong><a href="#user-content-lspclient.request">request</a></strong>&lt;<a id="user-content-lspclient.request^params" href="#user-content-lspclient.request^params">Params</a>, <a id="user-content-lspclient.request^result" href="#user-content-lspclient.request^result">Result</a>&gt;(<a id="user-content-lspclient.request^method" href="#user-content-lspclient.request^method">method</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.request^params" href="#user-content-lspclient.request^params">params</a>: <a href="#user-content-lspclient.request^params">Params</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.request^result">Result</a>&gt;</code></dt>
 
 <dd><p>Make a request to the server. Returns a promise that resolves to
@@ -145,19 +142,14 @@ changes that happend during the request.</p>
 
 <dd><p>Cancel the in-progress request with the given parameter value
 (which is compared by identity).</p>
-</dd><dt id="user-content-lspclient.hascapability">
-  <code><strong><a href="#user-content-lspclient.hascapability">hasCapability</a></strong>(<a id="user-content-lspclient.hascapability^name" href="#user-content-lspclient.hascapability^name">name</a>: &quot;positionEncoding&quot; | &quot;textDocumentSync&quot; | &quot;notebookDocumentSync&quot; | &quot;completionProvider&quot; | &quot;hoverProvider&quot; | &quot;signatureHelpProvider&quot; | &quot;declarationProvider&quot; | &quot;definitionProvider&quot; | &quot;typeDefinitionProvider&quot; | &quot;implementationProvider&quot; | &quot;referencesProvider&quot; | &quot;documentHighlightProvider&quot; | &quot;documentSymbolProvider&quot; | &quot;codeActionProvider&quot; | &quot;codeLensProvider&quot; | &quot;documentLinkProvider&quot; | &quot;colorProvider&quot; | &quot;workspaceSymbolProvider&quot; | &quot;documentFormattingProvider&quot; | &quot;documentRangeFormattingProvider&quot; | &quot;documentOnTypeFormattingProvider&quot; | &quot;renameProvider&quot; | &quot;foldingRangeProvider&quot; | &quot;selectionRangeProvider&quot; | &quot;executeCommandProvider&quot; | &quot;callHierarchyProvider&quot; | &quot;linkedEditingRangeProvider&quot; | &quot;semanticTokensProvider&quot; | &quot;monikerProvider&quot; | &quot;typeHierarchyProvider&quot; | &quot;inlineValueProvider&quot; | &quot;inlayHintProvider&quot; | &quot;diagnosticProvider&quot; | &quot;inlineCompletionProvider&quot; | &quot;workspace&quot; | &quot;experimental&quot;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
-
-<dd><p>Check whether the server has a given property in its capability
-object. Returns null when the connection hasn't finished
-initializing yet.</p>
 </dd><dt id="user-content-lspclient.workspacemapping">
   <code><strong><a href="#user-content-lspclient.workspacemapping">workspaceMapping</a></strong>() → <a href="#user-content-workspacemapping">WorkspaceMapping</a></code></dt>
 
 <dd><p>Create a <a href="#user-content-workspacemapping">workspace mapping</a> that
-tracks changes to files in this client's workspace. Make sure
-you call <a href="#user-content-workspacemapping.destroy"><code>destroy</code></a> on
-the mapping when you're done with it.</p>
+tracks changes to files in this client's workspace, relative to
+the moment where it was created. Make sure you call
+<a href="#user-content-workspacemapping.destroy"><code>destroy</code></a> on the mapping
+when you're done with it.</p>
 </dd><dt id="user-content-lspclient.withmapping">
   <code><strong><a href="#user-content-lspclient.withmapping">withMapping</a></strong>&lt;<a id="user-content-lspclient.withmapping^t" href="#user-content-lspclient.withmapping^t">T</a>&gt;(<a id="user-content-lspclient.withmapping^f" href="#user-content-lspclient.withmapping^f">f</a>: fn(<a id="user-content-lspclient.withmapping^f^mapping" href="#user-content-lspclient.withmapping^f^mapping">mapping</a>: <a href="#user-content-workspacemapping">WorkspaceMapping</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;</code></dt>
 
@@ -271,13 +263,11 @@ broken somehow.</p>
   <code><strong><a href="#user-content-lspplugin.uri">uri</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
 <dd><p>The URI of this file.</p>
-</dd><dt id="user-content-lspplugin.unsyncedchanges">
-  <code><strong><a href="#user-content-lspplugin.unsyncedchanges">unsyncedChanges</a></strong>: <a href="https://codemirror.net/docs/ref#state.ChangeSet">ChangeSet</a></code></dt>
-
-<dd></dd><dt id="user-content-lspplugin.view">
+</dd><dt id="user-content-lspplugin.view">
   <code><strong><a href="#user-content-lspplugin.view">view</a></strong>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a></code></dt>
 
-<dd></dd><dt id="user-content-lspplugin.doctohtml">
+<dd><p>The editor view that this plugin belongs to.</p>
+</dd><dt id="user-content-lspplugin.doctohtml">
   <code><strong><a href="#user-content-lspplugin.doctohtml">docToHTML</a></strong>(<a id="user-content-lspplugin.doctohtml^value" href="#user-content-lspplugin.doctohtml^value">value</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a> | <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#markupContent">MarkupContent</a>, <a id="user-content-lspplugin.doctohtml^defaultkind" href="#user-content-lspplugin.doctohtml^defaultkind">defaultKind</a>&#8288;?: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#markupKind">MarkupKind</a> = &quot;plaintext&quot;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
 <dd><p>Render a doc string from the server to HTML.</p>
@@ -295,10 +285,18 @@ document offset.</p>
   <code><strong><a href="#user-content-lspplugin.reporterror">reportError</a></strong>(<a id="user-content-lspplugin.reporterror^message" href="#user-content-lspplugin.reporterror^message">message</a>: any, <a id="user-content-lspplugin.reporterror^err" href="#user-content-lspplugin.reporterror^err">err</a>: any)</code></dt>
 
 <dd><p>Display an error in this plugin's editor.</p>
+</dd><dt id="user-content-lspplugin.unsyncedchanges">
+  <code><strong><a href="#user-content-lspplugin.unsyncedchanges">unsyncedChanges</a></strong>: <a href="https://codemirror.net/docs/ref#state.ChangeSet">ChangeSet</a></code></dt>
+
+<dd><p>The changes accumulated in this editor that have not been sent
+to the server yet.</p>
 </dd><dt id="user-content-lspplugin.clear">
   <code><strong><a href="#user-content-lspplugin.clear">clear</a></strong>()</code></dt>
 
-<dd></dd><dt id="user-content-lspplugin^get">
+<dd><p>Reset the <a href="#user-content-lspplugin.unsyncedchanges">unsynced
+changes</a>. Should probably
+only be called by a <a href="#user-content-workspace">workspace</a>.</p>
+</dd><dt id="user-content-lspplugin^get">
   <code>static <strong><a href="#user-content-lspplugin^get">get</a></strong>(<a id="user-content-lspplugin^get^view" href="#user-content-lspplugin^get^view">view</a>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>) → <a href="#user-content-lspplugin">LSPPlugin</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
 <dd><p>Get the LSP plugin associated with an editor, if any.</p>
@@ -363,9 +361,10 @@ resolves.</p>
     <a href="#user-content-workspace">Workspace</a></h4>
 </dt>
 
-<dd><p>Providing your own workspace class can provide more control over
-the way files are loaded and managed when interacting with the
-language server.</p>
+<dd><p>Implementing your own workspace class can provide more control
+over the way files are loaded and managed when interacting with
+the language server. See
+<a href="#user-content-lspclientconfig.workspace"><code>LSPClientConfig.workspace</code></a>.</p>
 <dl><dt id="user-content-workspace.constructor">
   <code>new <strong><a href="#user-content-workspace.constructor">Workspace</a></strong>(<a id="user-content-workspace.constructor^client" href="#user-content-workspace.constructor^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>)</code></dt>
 
@@ -378,7 +377,8 @@ workspace.</p>
 </dd><dt id="user-content-workspace.client">
   <code><strong><a href="#user-content-workspace.client">client</a></strong>: <a href="#user-content-lspclient">LSPClient</a></code></dt>
 
-<dd></dd><dt id="user-content-workspace.getfile">
+<dd><p>The LSP client associated with this workspace.</p>
+</dd><dt id="user-content-workspace.getfile">
   <code><strong><a href="#user-content-workspace.getfile">getFile</a></strong>(<a id="user-content-workspace.getfile^uri" href="#user-content-workspace.getfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
 <dd><p>Find the open file with the given URI, if it exists. The default
@@ -425,17 +425,7 @@ files.</p>
 
 <dd><p>Called when the client for this workspace is disconnected. The
 default implementation does nothing.</p>
-</dd><dt id="user-content-workspace.createfile">
-  <code><strong><a href="#user-content-workspace.createfile">createFile</a></strong>(<a id="user-content-workspace.createfile^uri" href="#user-content-workspace.createfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
-
-<dd><p>FIXME document or remove</p>
-</dd><dt id="user-content-workspace.renamefile">
-  <code><strong><a href="#user-content-workspace.renamefile">renameFile</a></strong>(<a id="user-content-workspace.renamefile^uri" href="#user-content-workspace.renamefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.renamefile^newuri" href="#user-content-workspace.renamefile^newuri">newURI</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
-
-<dd></dd><dt id="user-content-workspace.deletefile">
-  <code><strong><a href="#user-content-workspace.deletefile">deleteFile</a></strong>(<a id="user-content-workspace.deletefile^uri" href="#user-content-workspace.deletefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code></dt>
-
-<dd></dd><dt id="user-content-workspace.updatefile">
+</dd><dt id="user-content-workspace.updatefile">
   <code><strong><a href="#user-content-workspace.updatefile">updateFile</a></strong>(<a id="user-content-workspace.updatefile^uri" href="#user-content-workspace.updatefile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.updatefile^update" href="#user-content-workspace.updatefile^update">update</a>: <a href="https://codemirror.net/docs/ref#state.TransactionSpec">TransactionSpec</a>)</code></dt>
 
 <dd><p>Called when a server-initiated change to a file is applied. The
@@ -459,7 +449,7 @@ this isn't possible.</p>
     <a href="#user-content-workspacefile">WorkspaceFile</a></h4>
 </dt>
 
-<dd><p>A file that is active in a workspace.</p>
+<dd><p>A file that is open in a workspace.</p>
 <dl><dt id="user-content-workspacefile.uri">
   <code><strong><a href="#user-content-workspacefile.uri">uri</a></strong>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code></dt>
 
@@ -482,8 +472,8 @@ should be updated when
 </dd><dt id="user-content-workspacefile.getview">
   <code><strong><a href="#user-content-workspacefile.getview">getView</a></strong>(<a id="user-content-workspacefile.getview^main" href="#user-content-workspacefile.getview^main">main</a>&#8288;?: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>) → <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
-<dd><p>Get an active editor view for this file, if there is one. With
-workspaces that support multiple view on a file, <code>main</code>
+<dd><p>Get an active editor view for this file, if there is one. For
+workspaces that support multiple views on a file, <code>main</code>
 indicates a preferred view.</p>
 </dd></dl>
 
@@ -535,7 +525,7 @@ and then applies the changes it returns.</p>
   <code><strong><a href="#user-content-formatkeymap">formatKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
 
 <dd><p>A keymap that binds Shift-Alt-f to
-<a href="#user-content-lsp-server.formatdocument"><code>formatDocument</code></a>.</p>
+<a href="#user-content-formatdocument"><code>formatDocument</code></a>.</p>
 </dd>
 <dt id="user-content-renamesymbol">
   <code><strong><a href="#user-content-renamesymbol">renameSymbol</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
@@ -545,13 +535,13 @@ for a new name for that symbol, and ask the language server to
 perform a rename of that symbol.</p>
 <p>Note that this may affect files other than the one loaded into
 this view. See the
-<a href="#user-content-lspclientconfig.handlechangeinfile"><code>handleChangeInFile</code></a>
-option.</p>
+<a href="#user-content-workspace.updatefile"><code>Workspace.updateFile</code></a>
+method.</p>
 </dd>
 <dt id="user-content-renamekeymap">
   <code><strong><a href="#user-content-renamekeymap">renameKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
 
-<dd><p>A keymap that binds F2 to <a href="#user-content-lsp-server.renamesymbol"><code>renameSymbol</code></a>.</p>
+<dd><p>A keymap that binds F2 to <a href="#user-content-renamesymbol"><code>renameSymbol</code></a>.</p>
 </dd>
 <dt id="user-content-signaturehelp">
   <code><strong><a href="#user-content-signaturehelp">signatureHelp</a></strong>(<a id="user-content-signaturehelp^config" href="#user-content-signaturehelp^config">config</a>&#8288;?: {keymap&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>} = {}) → <a href="https://codemirror.net/docs/ref#state.Extension">Extension</a></code></dt>
@@ -583,7 +573,7 @@ move to the previous signature.</p>
 
 <dd><p>Jump to the definition of the symbol at the cursor. To support
 cross-file jumps, you'll need to implement
-<a href="#user-content-lspclientconfig.displayfile"><code>LSPClientConfig.displayFile</code></a>.</p>
+<a href="#user-content-workspace.displayfile"><code>Workspace.displayFile</code></a>.</p>
 </dd>
 <dt id="user-content-jumptodeclaration">
   <code><strong><a href="#user-content-jumptodeclaration">jumpToDeclaration</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
@@ -608,11 +598,15 @@ cross-file jumps, you'll need to implement
 <dt id="user-content-findreferences">
   <code><strong><a href="#user-content-findreferences">findReferences</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
 
-<dd></dd>
+<dd><p>Ask the server to locate all references to the symbol at the
+cursor. When the server can provide such references, show them as
+a list in a panel.</p>
+</dd>
 <dt id="user-content-closereferencepanel">
   <code><strong><a href="#user-content-closereferencepanel">closeReferencePanel</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
 
-<dd></dd>
+<dd><p>Close the reference panel, if it is open.</p>
+</dd>
 <dt id="user-content-findreferenceskeymap">
   <code><strong><a href="#user-content-findreferenceskeymap">findReferencesKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
 

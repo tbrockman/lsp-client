@@ -3,7 +3,7 @@ import {EditorView} from "@codemirror/view"
 import {LSPClient} from "./client"
 import {LSPPlugin} from "./plugin"
 
-/// A file that is active in a workspace.
+/// A file that is open in a workspace.
 export interface WorkspaceFile {
   /// The file's unique URI.
   uri: string
@@ -16,8 +16,8 @@ export interface WorkspaceFile {
   /// should be updated when
   /// [`syncFiles`](#lsp-client.Workspace.syncFiles) is called.
   doc: Text
-  /// Get an active editor view for this file, if there is one. With
-  /// workspaces that support multiple view on a file, `main`
+  /// Get an active editor view for this file, if there is one. For
+  /// workspaces that support multiple views on a file, `main`
   /// indicates a preferred view.
   getView(main?: EditorView): EditorView | null
 }
@@ -28,16 +28,20 @@ interface WorkspaceFileUpdate {
   changes: ChangeSet
 }
 
-/// Providing your own workspace class can provide more control over
-/// the way files are loaded and managed when interacting with the
-/// language server.
+/// Implementing your own workspace class can provide more control
+/// over the way files are loaded and managed when interacting with
+/// the language server. See
+/// [`LSPClientConfig.workspace`](#lsp-client.LSPClientConfig.workspace).
 export abstract class Workspace {
   /// The files currently open in the workspace.
   abstract files: WorkspaceFile[]
 
   /// The constructor, as called by the client when creating a
   /// workspace.
-  constructor(readonly client: LSPClient) {}
+  constructor(
+    /// The LSP client associated with this workspace.
+    readonly client: LSPClient
+  ) {}
 
   /// Find the open file with the given URI, if it exists. The default
   /// implementation just looks it up in `this.files`.
@@ -84,11 +88,6 @@ export abstract class Workspace {
   /// Called when the client for this workspace is disconnected. The
   /// default implementation does nothing.
   disconnected(): void {}
-
-  /// FIXME document or remove
-  createFile(uri: string): void {}
-  renameFile(uri: string, newURI: string): void {}
-  deleteFile(uri: string): void {}
 
   /// Called when a server-initiated change to a file is applied. The
   /// default implementation simply dispatches the update to the
