@@ -11,8 +11,8 @@ The [project page](https://codemirror.net/) has more information, a
 number of [examples](https://codemirror.net/examples/) and the
 [documentation](https://codemirror.net/docs/).
 
-This code is released under an
-[MIT license](https://github.com/codemirror/lsp-client/tree/main/LICENSE).
+Note that this code **does not** have a license yet. That should soon
+change.
 
 We aim to be an inclusive, welcoming community. To make that explicit,
 we have a [code of
