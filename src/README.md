@@ -93,6 +93,8 @@ new EditorView({
 
 @serverCompletion
 
+@serverCompletionSource
+
 @hoverTooltips
 
 @formatDocument
@@ -110,6 +112,8 @@ new EditorView({
 @nextSignature
 
 @prevSignature
+
+@signatureKeymap
 
 @jumpToDefinition
 

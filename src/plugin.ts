@@ -50,7 +50,7 @@ export class LSPPlugin {
   }
 
   /// Display an error in this plugin's editor.
-  reportError(message: any, err: any) {
+  reportError(message: string, err: any) {
     showDialog(this.view, {
       label: this.view.state.phrase(message) + ": " + (err.message || err),
       class: "cm-lsp-message cm-lsp-message-error",
@@ -85,10 +85,12 @@ export class LSPPlugin {
     return view.plugin(lspPlugin)
   }
 
-  /// Create an editor extension that connects that editor to the given
-  /// LSP client. This will cause the client to consider the given
-  /// URI/file to be open, and allow the editor to use LSP-related
-  /// functionality exported by this package.
+  /// Create an editor extension that connects that editor to the
+  /// given LSP client. This extension is necessary to use LSP-related
+  /// functionality exported by this package. Creating an editor with
+  /// this plugin will cause
+  /// [`openFile`](#lsp-client.Workspace.openFile) to be called on the
+  /// workspace.
   ///
   /// By default, the language ID given to the server for this file is
   /// derived from the editor's language configuration via

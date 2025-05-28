@@ -1,11 +1,11 @@
 export {Transport, LSPClient, LSPClientConfig, WorkspaceMapping} from "./client"
 export {LSPPlugin} from "./plugin"
 export {Workspace, WorkspaceFile} from "./workspace"
-export {serverCompletion} from "./completion"
+export {serverCompletion, serverCompletionSource} from "./completion"
 export {hoverTooltips} from "./hover"
 export {formatDocument, formatKeymap} from "./formatting"
 export {renameSymbol, renameKeymap} from "./rename"
-export {signatureHelp, nextSignature, prevSignature, showSignatureHelp} from "./signature"
+export {signatureHelp, nextSignature, prevSignature, showSignatureHelp, signatureKeymap} from "./signature"
 export {jumpToDefinition, jumpToDeclaration, jumpToTypeDefinition, jumpToImplementation, jumpToDefinitionKeymap} from "./definition"
 export {findReferences, closeReferencePanel, findReferencesKeymap} from "./references"
 
@@ -23,10 +23,10 @@ import {findReferencesKeymap} from "./references"
 
 /// Returns an extension that enables the [LSP
 /// plugin](#lsp-client.LSPPlugin) and all other features provided by
-/// this package. You also pick and choose individual extensions from
-/// the exports. In that case, make sure to also include
-/// `LSPPlugin.create` in your extensions, or the others will not
-/// work.
+/// this package. You can also pick and choose individual extensions
+/// from the exports. In that case, make sure to also include
+/// [`LSPPlugin.create`](#lsp-client.LSPPlugin^create) in your
+/// extensions, or the others will not work.
 export function languageServerSupport(client: LSPClient, uri: string, languageID?: string): Extension {
   return [
     LSPPlugin.create(client, uri, languageID),

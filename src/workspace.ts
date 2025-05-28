@@ -11,10 +11,10 @@ export interface WorkspaceFile {
   languageId: string
   /// The current version of the file.
   version: number
-  /// The document corresponding to `this.version`. May be behind the
-  /// content of an editor, in which case both this and the version
-  /// should be updated when
-  /// [`syncFiles`](#lsp-client.Workspace.syncFiles) is called.
+  /// The document corresponding to `this.version`. Will not reflect
+  /// changes made after that version was synchronized. Will be
+  /// updated, along with `version`, by
+  /// [`syncFiles`](#lsp-client.Workspace.syncFiles).
   doc: Text
   /// Get an active editor view for this file, if there is one. For
   /// workspaces that support multiple views on a file, `main`
@@ -51,7 +51,7 @@ export abstract class Workspace {
 
   /// Check all open files for changes (usually from editors, but they
   /// may also come from other sources). When a file is changed,
-  /// return a record that describes the changes, and update its
+  /// return a record that describes the changes, and update the file's
   /// [`version`](#lsp-client.WorkspaceFile.version) and
   /// [`doc`](#lsp-client.WorkspaceFile.doc) properties to reflect the
   /// new version.

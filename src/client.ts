@@ -64,8 +64,8 @@ const clientCapabilities: lsp.ClientCapabilities = {
 }
 
 /// A workspace mapping is used to track changes made to open
-/// documents between the time a request is started and the time its
-/// result comes back.
+/// documents, so that positions returned by a request can be
+/// interpreted in terms of the current, potentially changed document.
 export class WorkspaceMapping {
   /// @internal
   mappings: Map<string, ChangeDesc> = new Map
@@ -85,9 +85,9 @@ export class WorkspaceMapping {
     if (known) this.mappings.set(uri, known.composeDesc(changes))
   }
 
-  /// Get the changes made to the document with the given URI during
-  /// the request. Returns null for documents that weren't changed or
-  /// aren't open.
+  /// Get the changes made to the document with the given URI since
+  /// the mapping was created. Returns null for documents that aren't
+  /// open.
   getMapping(uri: string) {
     let known = this.mappings.get(uri)
     if (!known) return null
@@ -95,9 +95,7 @@ export class WorkspaceMapping {
     return plugin ? known.composeDesc(plugin.unsyncedChanges) : known
   }
 
-  /// Map a position in the given file forward from the document the
-  /// server had seen when the request was started to the document as
-  /// it exists when the request finished.
+  /// Map a position in the given file forward to the current document state.
   mapPos(uri: string, pos: number, assoc?: number): number
   mapPos(uri: string, pos: number, assoc: number, mode: MapMode): number | null
   mapPos(uri: string, pos: number, assoc = -1, mode: MapMode = MapMode.Simple): number | null {
@@ -106,7 +104,7 @@ export class WorkspaceMapping {
   }
 
   /// Convert an LSP-style position referring to a document at the
-  /// start of the request to an offset in the current document.
+  /// time the mapping was created to an offset in the current document.
   mapPosition(uri: string, pos: lsp.Position, assoc?: number): number
   mapPosition(uri: string, pos: lsp.Position, assoc: number, mode: MapMode): number | null
   mapPosition(uri: string, pos: lsp.Position, assoc = -1, mode: MapMode = MapMode.Simple): number | null {
@@ -182,10 +180,10 @@ export type LSPClientConfig = {
   /// code embedded in the Markdown text when its language tag matches
   /// the name of the language used by the editor. You can provide a
   /// function here that returns a CodeMirror language object for a
-  /// given language tag to support morelanguages.
+  /// given language tag to support more languages.
   highlightLanguage?: (name: string) => Language | null
   /// By default, the client will only handle the server notifications
-  /// `window/logMessage` (logging warning and errors to the console)
+  /// `window/logMessage` (logging warnings and errors to the console)
   /// and `window/showMessage`. You can pass additional handlers here.
   /// They will be tried before the built-in handlers, and override
   /// those when they return true.

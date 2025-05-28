@@ -206,12 +206,12 @@ suspicious HTML structure.</p>
 code embedded in the Markdown text when its language tag matches
 the name of the language used by the editor. You can provide a
 function here that returns a CodeMirror language object for a
-given language tag to support morelanguages.</p>
+given language tag to support more languages.</p>
 </dd><dt id="user-content-lspclientconfig.notificationhandlers">
   <code><strong><a href="#user-content-lspclientconfig.notificationhandlers">notificationHandlers</a></strong>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>&lt;fn(<a id="user-content-lspclientconfig.notificationhandlers^client" href="#user-content-lspclientconfig.notificationhandlers^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>, <a id="user-content-lspclientconfig.notificationhandlers^params" href="#user-content-lspclientconfig.notificationhandlers^params">params</a>: any) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a>&gt;</code></dt>
 
 <dd><p>By default, the client will only handle the server notifications
-<code>window/logMessage</code> (logging warning and errors to the console)
+<code>window/logMessage</code> (logging warnings and errors to the console)
 and <code>window/showMessage</code>. You can pass additional handlers here.
 They will be tried before the built-in handlers, and override
 those when they return true.</p>
@@ -282,7 +282,7 @@ document, but can be given another one.</p>
 <dd><p>Convert an LSP <code>{line, character}</code> object to a CodeMirror
 document offset.</p>
 </dd><dt id="user-content-lspplugin.reporterror">
-  <code><strong><a href="#user-content-lspplugin.reporterror">reportError</a></strong>(<a id="user-content-lspplugin.reporterror^message" href="#user-content-lspplugin.reporterror^message">message</a>: any, <a id="user-content-lspplugin.reporterror^err" href="#user-content-lspplugin.reporterror^err">err</a>: any)</code></dt>
+  <code><strong><a href="#user-content-lspplugin.reporterror">reportError</a></strong>(<a id="user-content-lspplugin.reporterror^message" href="#user-content-lspplugin.reporterror^message">message</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspplugin.reporterror^err" href="#user-content-lspplugin.reporterror^err">err</a>: any)</code></dt>
 
 <dd><p>Display an error in this plugin's editor.</p>
 </dd><dt id="user-content-lspplugin.unsyncedchanges">
@@ -303,10 +303,12 @@ only be called by a <a href="#user-content-workspace">workspace</a>.</p>
 </dd><dt id="user-content-lspplugin^create">
   <code>static <strong><a href="#user-content-lspplugin^create">create</a></strong>(<a id="user-content-lspplugin^create^client" href="#user-content-lspplugin^create^client">client</a>: <a href="#user-content-lspclient">LSPClient</a>, <a id="user-content-lspplugin^create^fileuri" href="#user-content-lspplugin^create^fileuri">fileURI</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspplugin^create^languageid" href="#user-content-lspplugin^create^languageid">languageID</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#state.Extension">Extension</a></code></dt>
 
-<dd><p>Create an editor extension that connects that editor to the given
-LSP client. This will cause the client to consider the given
-URI/file to be open, and allow the editor to use LSP-related
-functionality exported by this package.</p>
+<dd><p>Create an editor extension that connects that editor to the
+given LSP client. This extension is necessary to use LSP-related
+functionality exported by this package. Creating an editor with
+this plugin will cause
+<a href="#user-content-workspace.openfile"><code>openFile</code></a> to be called on the
+workspace.</p>
 <p>By default, the language ID given to the server for this file is
 derived from the editor's language configuration via
 <a href="https://codemirror.net/docs/ref/#language.Language.name"><code>Language.name</code></a>. You can pass in
@@ -321,25 +323,23 @@ a specific ID as a third parameter.</p>
 </dt>
 
 <dd><p>A workspace mapping is used to track changes made to open
-documents between the time a request is started and the time its
-result comes back.</p>
+documents, so that positions returned by a request can be
+interpreted in terms of the current, potentially changed document.</p>
 <dl><dt id="user-content-workspacemapping.getmapping">
   <code><strong><a href="#user-content-workspacemapping.getmapping">getMapping</a></strong>(<a id="user-content-workspacemapping.getmapping^uri" href="#user-content-workspacemapping.getmapping^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
-<dd><p>Get the changes made to the document with the given URI during
-the request. Returns null for documents that weren't changed or
-aren't open.</p>
+<dd><p>Get the changes made to the document with the given URI since
+the mapping was created. Returns null for documents that aren't
+open.</p>
 </dd><dt id="user-content-workspacemapping.mappos">
   <code><strong><a href="#user-content-workspacemapping.mappos">mapPos</a></strong>(<a id="user-content-workspacemapping.mappos^uri" href="#user-content-workspacemapping.mappos^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mappos^pos" href="#user-content-workspacemapping.mappos^pos">pos</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^assoc" href="#user-content-workspacemapping.mappos^assoc">assoc</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code><div><code><strong><a href="#user-content-workspacemapping.mappos">mapPos</a></strong>(<a id="user-content-workspacemapping.mappos^uri" href="#user-content-workspacemapping.mappos^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mappos^pos" href="#user-content-workspacemapping.mappos^pos">pos</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^assoc" href="#user-content-workspacemapping.mappos^assoc">assoc</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^mode" href="#user-content-workspacemapping.mappos^mode">mode</a>: <a href="https://codemirror.net/docs/ref#state.MapMode">MapMode</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></div></dt>
 
-<dd><p>Map a position in the given file forward from the document the
-server had seen when the request was started to the document as
-it exists when the request finished.</p>
+<dd><p>Map a position in the given file forward to the current document state.</p>
 </dd><dt id="user-content-workspacemapping.mapposition">
   <code><strong><a href="#user-content-workspacemapping.mapposition">mapPosition</a></strong>(<a id="user-content-workspacemapping.mapposition^uri" href="#user-content-workspacemapping.mapposition^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mapposition^pos" href="#user-content-workspacemapping.mapposition^pos">pos</a>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#position">Position</a>, <a id="user-content-workspacemapping.mapposition^assoc" href="#user-content-workspacemapping.mapposition^assoc">assoc</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code><div><code><strong><a href="#user-content-workspacemapping.mapposition">mapPosition</a></strong>(<a id="user-content-workspacemapping.mapposition^uri" href="#user-content-workspacemapping.mapposition^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mapposition^pos" href="#user-content-workspacemapping.mapposition^pos">pos</a>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#position">Position</a>, <a id="user-content-workspacemapping.mapposition^assoc" href="#user-content-workspacemapping.mapposition^assoc">assoc</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mapposition^mode" href="#user-content-workspacemapping.mapposition^mode">mode</a>: <a href="https://codemirror.net/docs/ref#state.MapMode">MapMode</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></div></dt>
 
 <dd><p>Convert an LSP-style position referring to a document at the
-start of the request to an offset in the current document.</p>
+time the mapping was created to an offset in the current document.</p>
 </dd><dt id="user-content-workspacemapping.destroy">
   <code><strong><a href="#user-content-workspacemapping.destroy">destroy</a></strong>()</code></dt>
 
@@ -388,7 +388,7 @@ implementation just looks it up in <code>this.files</code>.</p>
 
 <dd><p>Check all open files for changes (usually from editors, but they
 may also come from other sources). When a file is changed,
-return a record that describes the changes, and update its
+return a record that describes the changes, and update the file's
 <a href="#user-content-workspacefile.version"><code>version</code></a> and
 <a href="#user-content-workspacefile.doc"><code>doc</code></a> properties to reflect the
 new version.</p>
@@ -465,10 +465,10 @@ this isn't possible.</p>
 </dd><dt id="user-content-workspacefile.doc">
   <code><strong><a href="#user-content-workspacefile.doc">doc</a></strong>: <a href="https://codemirror.net/docs/ref#state.Text">Text</a></code></dt>
 
-<dd><p>The document corresponding to <code>this.version</code>. May be behind the
-content of an editor, in which case both this and the version
-should be updated when
-<a href="#user-content-workspace.syncfiles"><code>syncFiles</code></a> is called.</p>
+<dd><p>The document corresponding to <code>this.version</code>. Will not reflect
+changes made after that version was synchronized. Will be
+updated, along with <code>version</code>, by
+<a href="#user-content-workspace.syncfiles"><code>syncFiles</code></a>.</p>
 </dd><dt id="user-content-workspacefile.getview">
   <code><strong><a href="#user-content-workspacefile.getview">getView</a></strong>(<a id="user-content-workspacefile.getview^main" href="#user-content-workspacefile.getview^main">main</a>&#8288;?: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>) → <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
 
@@ -486,10 +486,10 @@ indicates a preferred view.</p>
 
 <dd><p>Returns an extension that enables the <a href="#user-content-lspplugin">LSP
 plugin</a> and all other features provided by
-this package. You also pick and choose individual extensions from
-the exports. In that case, make sure to also include
-<code>LSPPlugin.create</code> in your extensions, or the others will not
-work.</p>
+this package. You can also pick and choose individual extensions
+from the exports. In that case, make sure to also include
+<a href="#user-content-lspplugin%5ecreate"><code>LSPPlugin.create</code></a> in your
+extensions, or the others will not work.</p>
 </dd>
 <dt id="user-content-servercompletion">
   <code><strong><a href="#user-content-servercompletion">serverCompletion</a></strong>(<a id="user-content-servercompletion^config" href="#user-content-servercompletion^config">config</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a> = {}) → <a href="https://codemirror.net/docs/ref#state.Extension">Extension</a></code></dt>
@@ -508,6 +508,12 @@ for completions is added as a regular source, in addition to any
 other sources. Set this to true to make it replace all
 completion sources.</p>
 </dd></dl></dd></dl></dd>
+<dt id="user-content-servercompletionsource">
+  <code><strong><a href="#user-content-servercompletionsource">serverCompletionSource</a></strong>: <a href="https://codemirror.net/docs/ref#autocomplete.CompletionSource">CompletionSource</a></code></dt>
+
+<dd><p>A completion source that requests completions from a language
+server.</p>
+</dd>
 <dt id="user-content-hovertooltips">
   <code><strong><a href="#user-content-hovertooltips">hoverTooltips</a></strong>(<a id="user-content-hovertooltips^config" href="#user-content-hovertooltips^config">config</a>&#8288;?: {hoverTime&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>} = {}) → <a href="https://codemirror.net/docs/ref#state.Extension">Extension</a></code></dt>
 
@@ -567,6 +573,28 @@ move to the next one.</p>
 
 <dd><p>If there is an active signature tooltip with multiple signatures,
 move to the previous signature.</p>
+</dd>
+<dt id="user-content-signaturekeymap">
+  <code><strong><a href="#user-content-signaturekeymap">signatureKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
+
+<dd><p>A keymap that binds</p>
+<ul>
+<li>
+<p>Ctrl-Shift-Space (Cmd-Shift-Space on macOS) to
+<a href="#user-content-showsignaturehelp"><code>showSignatureHelp</code></a></p>
+</li>
+<li>
+<p>Ctrl-Shift-ArrowUp (Cmd-Shift-ArrowUp on macOS) to
+<a href="#user-content-prevsignature"><code>prevSignature</code></a></p>
+</li>
+<li>
+<p>Ctrl-Shift-ArrowDown (Cmd-Shift-ArrowDown on macOS) to
+<a href="#user-content-nextsignature"><code>nextSignature</code></a></p>
+</li>
+</ul>
+<p>Note that these keys are automatically bound by
+<a href="#user-content-signaturehelp"><code>signatureHelp</code></a> unless you pass it
+<code>keymap: false</code>.</p>
 </dd>
 <dt id="user-content-jumptodefinition">
   <code><strong><a href="#user-content-jumptodefinition">jumpToDefinition</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
