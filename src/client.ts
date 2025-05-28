@@ -66,7 +66,7 @@ const clientCapabilities: lsp.ClientCapabilities = {
 /// A workspace mapping is used to track changes made to open
 /// documents between the time a request is started and the time its
 /// result comes back.
-class WorkspaceMapping {
+export class WorkspaceMapping {
   /// @internal
   mappings: Map<string, ChangeDesc> = new Map
   private startDocs: Map<string, Text> = new Map
@@ -79,6 +79,7 @@ class WorkspaceMapping {
     }
   }
 
+  /// @internal
   addChanges(uri: string, changes: ChangeDesc) {
     let known = this.mappings.get(uri)
     if (known) this.mappings.set(uri, known.composeDesc(changes))
@@ -97,23 +98,23 @@ class WorkspaceMapping {
   /// Map a position in the given file forward from the document the
   /// server had seen when the request was started to the document as
   /// it exists when the request finished.
-  mapPos(uri: string, pos: number): number
-  mapPos(uri: string, pos: number, mode: MapMode): number | null
-  mapPos(uri: string, pos: number, mode: MapMode = MapMode.Simple): number | null {
+  mapPos(uri: string, pos: number, assoc?: number): number
+  mapPos(uri: string, pos: number, assoc: number, mode: MapMode): number | null
+  mapPos(uri: string, pos: number, assoc = -1, mode: MapMode = MapMode.Simple): number | null {
     let changes = this.getMapping(uri)
-    return changes ? changes.mapPos(pos, mode) : pos
+    return changes ? changes.mapPos(pos, assoc, mode) : pos
   }
 
   /// Convert an LSP-style position referring to a document at the
   /// start of the request to an offset in the current document.
-  mapPosition(uri: string, pos: lsp.Position): number
-  mapPosition(uri: string, pos: lsp.Position, mode: MapMode): number | null
-  mapPosition(uri: string, pos: lsp.Position, mode: MapMode = MapMode.Simple): number | null {
+  mapPosition(uri: string, pos: lsp.Position, assoc?: number): number
+  mapPosition(uri: string, pos: lsp.Position, assoc: number, mode: MapMode): number | null
+  mapPosition(uri: string, pos: lsp.Position, assoc = -1, mode: MapMode = MapMode.Simple): number | null {
     let start = this.startDocs.get(uri)
     if (!start) throw new Error("Cannot map from a file that's not in the workspace")
     let off = fromPosition(start, pos)
     let changes = this.getMapping(uri)
-    return changes ? changes.mapPos(off, mode) : off
+    return changes ? changes.mapPos(off, assoc, mode) : off
   }
 
   /// Disconnect this mapping from the client so that it will no

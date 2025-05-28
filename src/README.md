@@ -79,6 +79,8 @@ new EditorView({
 
 @LSPPlugin
 
+@WorkspaceMapping
+
 ### Workspaces
 
 @Workspace
@@ -118,3 +120,9 @@ new EditorView({
 @jumpToImplementation
 
 @jumpToDefinitionKeymap
+
+@findReferences
+
+@closeReferencePanel
+
+@findReferencesKeymap

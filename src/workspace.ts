@@ -54,9 +54,10 @@ export abstract class Workspace {
   abstract syncFiles(): readonly WorkspaceFileUpdate[]
 
   /// Called to request that the workspace open a file. The default
-  /// implementation simply returns null.
-  requestFile(uri: string): WorkspaceFile | null | Promise<WorkspaceFile | null> {
-    return null
+  /// implementation simply returns the file if it is open, null
+  /// otherwise.
+  requestFile(uri: string): Promise<WorkspaceFile | null> {
+    return Promise.resolve(this.getFile(uri))
   }
 
   /// Called when an editor is created for a file. The implementation

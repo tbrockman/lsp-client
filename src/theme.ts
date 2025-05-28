@@ -55,5 +55,25 @@ export const lspTheme = EditorView.baseTheme({
 
   ".cm-lsp-message button[type=submit]": {
     display: "block"
-  }
+  },
+
+  ".cm-lsp-reference-panel": {
+    fontFamily: "monospace",
+    whiteSpace: "pre",
+    padding: "3px 6px",
+    maxHeight: "120px",
+    overflow: "auto",
+    "& .cm-lsp-reference-file": {
+      fontWeight: "bold",
+    },
+    "& .cm-lsp-reference": {
+      cursor: "pointer",
+      "&[aria-selected]": {
+        backgroundColor: "#0077ee44"
+      },
+    },
+    "& .cm-lsp-reference-line": {
+      opacity: "0.7",
+    },
+  },
 })

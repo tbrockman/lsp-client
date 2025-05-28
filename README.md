@@ -152,14 +152,14 @@ changes that happend during the request.</p>
 object. Returns null when the connection hasn't finished
 initializing yet.</p>
 </dd><dt id="user-content-lspclient.workspacemapping">
-  <code><strong><a href="#user-content-lspclient.workspacemapping">workspaceMapping</a></strong>() → {addChanges: fn(<a id="user-content-lspclient.workspacemapping^returns.addchanges^uri" href="#user-content-lspclient.workspacemapping^returns.addchanges^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.workspacemapping^returns.addchanges^changes" href="#user-content-lspclient.workspacemapping^returns.addchanges^changes">changes</a>: <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a>)}</code></dt>
+  <code><strong><a href="#user-content-lspclient.workspacemapping">workspaceMapping</a></strong>() → <a href="#user-content-workspacemapping">WorkspaceMapping</a></code></dt>
 
 <dd><p>Create a <a href="#user-content-workspacemapping">workspace mapping</a> that
 tracks changes to files in this client's workspace. Make sure
 you call <a href="#user-content-workspacemapping.destroy"><code>destroy</code></a> on
 the mapping when you're done with it.</p>
 </dd><dt id="user-content-lspclient.withmapping">
-  <code><strong><a href="#user-content-lspclient.withmapping">withMapping</a></strong>&lt;<a id="user-content-lspclient.withmapping^t" href="#user-content-lspclient.withmapping^t">T</a>&gt;(<a id="user-content-lspclient.withmapping^f" href="#user-content-lspclient.withmapping^f">f</a>: fn(<a id="user-content-lspclient.withmapping^f^mapping" href="#user-content-lspclient.withmapping^f^mapping">mapping</a>: {addChanges: fn(<a id="user-content-lspclient.withmapping^f^mapping.addchanges^uri" href="#user-content-lspclient.withmapping^f^mapping.addchanges^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-lspclient.withmapping^f^mapping.addchanges^changes" href="#user-content-lspclient.withmapping^f^mapping.addchanges^changes">changes</a>: <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a>)}) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;</code></dt>
+  <code><strong><a href="#user-content-lspclient.withmapping">withMapping</a></strong>&lt;<a id="user-content-lspclient.withmapping^t" href="#user-content-lspclient.withmapping^t">T</a>&gt;(<a id="user-content-lspclient.withmapping^f" href="#user-content-lspclient.withmapping^f">f</a>: fn(<a id="user-content-lspclient.withmapping^f^mapping" href="#user-content-lspclient.withmapping^f^mapping">mapping</a>: <a href="#user-content-workspacemapping">WorkspaceMapping</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-lspclient.withmapping^t">T</a>&gt;</code></dt>
 
 <dd><p>Run the given promise with a <a href="#user-content-workspacemapping">workspace
 mapping</a> active. Automatically
@@ -316,6 +316,44 @@ a specific ID as a third parameter.</p>
 </dd></dl>
 
 </dd>
+<dt id="user-content-workspacemapping">
+  <h4>
+    <code>class</code>
+    <a href="#user-content-workspacemapping">WorkspaceMapping</a></h4>
+</dt>
+
+<dd><p>A workspace mapping is used to track changes made to open
+documents between the time a request is started and the time its
+result comes back.</p>
+<dl><dt id="user-content-workspacemapping.getmapping">
+  <code><strong><a href="#user-content-workspacemapping.getmapping">getMapping</a></strong>(<a id="user-content-workspacemapping.getmapping^uri" href="#user-content-workspacemapping.getmapping^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://codemirror.net/docs/ref#state.ChangeDesc">ChangeDesc</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+
+<dd><p>Get the changes made to the document with the given URI during
+the request. Returns null for documents that weren't changed or
+aren't open.</p>
+</dd><dt id="user-content-workspacemapping.mappos">
+  <code><strong><a href="#user-content-workspacemapping.mappos">mapPos</a></strong>(<a id="user-content-workspacemapping.mappos^uri" href="#user-content-workspacemapping.mappos^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mappos^pos" href="#user-content-workspacemapping.mappos^pos">pos</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^assoc" href="#user-content-workspacemapping.mappos^assoc">assoc</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code><div><code><strong><a href="#user-content-workspacemapping.mappos">mapPos</a></strong>(<a id="user-content-workspacemapping.mappos^uri" href="#user-content-workspacemapping.mappos^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mappos^pos" href="#user-content-workspacemapping.mappos^pos">pos</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^assoc" href="#user-content-workspacemapping.mappos^assoc">assoc</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mappos^mode" href="#user-content-workspacemapping.mappos^mode">mode</a>: <a href="https://codemirror.net/docs/ref#state.MapMode">MapMode</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></div></dt>
+
+<dd><p>Map a position in the given file forward from the document the
+server had seen when the request was started to the document as
+it exists when the request finished.</p>
+</dd><dt id="user-content-workspacemapping.mapposition">
+  <code><strong><a href="#user-content-workspacemapping.mapposition">mapPosition</a></strong>(<a id="user-content-workspacemapping.mapposition^uri" href="#user-content-workspacemapping.mapposition^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mapposition^pos" href="#user-content-workspacemapping.mapposition^pos">pos</a>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#position">Position</a>, <a id="user-content-workspacemapping.mapposition^assoc" href="#user-content-workspacemapping.mapposition^assoc">assoc</a>&#8288;?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code><div><code><strong><a href="#user-content-workspacemapping.mapposition">mapPosition</a></strong>(<a id="user-content-workspacemapping.mapposition^uri" href="#user-content-workspacemapping.mapposition^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspacemapping.mapposition^pos" href="#user-content-workspacemapping.mapposition^pos">pos</a>: <a href="https://microsoft.github.io/language-server-protocol/specifications/specification-current#position">Position</a>, <a id="user-content-workspacemapping.mapposition^assoc" href="#user-content-workspacemapping.mapposition^assoc">assoc</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>, <a id="user-content-workspacemapping.mapposition^mode" href="#user-content-workspacemapping.mapposition^mode">mode</a>: <a href="https://codemirror.net/docs/ref#state.MapMode">MapMode</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></div></dt>
+
+<dd><p>Convert an LSP-style position referring to a document at the
+start of the request to an offset in the current document.</p>
+</dd><dt id="user-content-workspacemapping.destroy">
+  <code><strong><a href="#user-content-workspacemapping.destroy">destroy</a></strong>()</code></dt>
+
+<dd><p>Disconnect this mapping from the client so that it will no
+longer be notified of new changes. You must make sure to call
+this on every mapping you create, except when you use
+<a href="#user-content-lspclient.withmapping"><code>withMapping</code></a>, which will
+automatically schedule a disconnect when the given promise
+resolves.</p>
+</dd></dl>
+
+</dd>
 </dl>
 <h3>Workspaces</h3>
 <dl>
@@ -355,10 +393,11 @@ return a record that describes the changes, and update its
 <a href="#user-content-workspacefile.doc"><code>doc</code></a> properties to reflect the
 new version.</p>
 </dd><dt id="user-content-workspace.requestfile">
-  <code><strong><a href="#user-content-workspace.requestfile">requestFile</a></strong>(<a id="user-content-workspace.requestfile^uri" href="#user-content-workspace.requestfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a>&gt; | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a></code></dt>
+  <code><strong><a href="#user-content-workspace.requestfile">requestFile</a></strong>(<a id="user-content-workspace.requestfile^uri" href="#user-content-workspace.requestfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>) → <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&lt;<a href="#user-content-workspacefile">WorkspaceFile</a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null">null</a>&gt;</code></dt>
 
 <dd><p>Called to request that the workspace open a file. The default
-implementation simply returns null.</p>
+implementation simply returns the file if it is open, null
+otherwise.</p>
 </dd><dt id="user-content-workspace.openfile">
   <code>abstract <strong><a href="#user-content-workspace.openfile">openFile</a></strong>(<a id="user-content-workspace.openfile^uri" href="#user-content-workspace.openfile^uri">uri</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.openfile^languageid" href="#user-content-workspace.openfile^languageid">languageId</a>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, <a id="user-content-workspace.openfile^view" href="#user-content-workspace.openfile^view">view</a>: <a href="https://codemirror.net/docs/ref#view.EditorView">EditorView</a>)</code></dt>
 
@@ -565,5 +604,20 @@ cross-file jumps, you'll need to implement
   <code><strong><a href="#user-content-jumptodefinitionkeymap">jumpToDefinitionKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
 
 <dd><p>Binds F12 to <a href="#user-content-jumptodefinition"><code>jumpToDefinition</code></a>.</p>
+</dd>
+<dt id="user-content-findreferences">
+  <code><strong><a href="#user-content-findreferences">findReferences</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd></dd>
+<dt id="user-content-closereferencepanel">
+  <code><strong><a href="#user-content-closereferencepanel">closeReferencePanel</a></strong>: <a href="https://codemirror.net/docs/ref#view.Command">Command</a></code></dt>
+
+<dd></dd>
+<dt id="user-content-findreferenceskeymap">
+  <code><strong><a href="#user-content-findreferenceskeymap">findReferencesKeymap</a></strong>: readonly <a href="https://codemirror.net/docs/ref#view.KeyBinding">KeyBinding</a>[]</code></dt>
+
+<dd><p>Binds Shift-F12 to <a href="#user-content-findreferences"><code>findReferences</code></a>
+and Escape to
+<a href="#user-content-closereferencepanel"><code>closeReferencePanel</code></a>.</p>
 </dd>
 </dl>
