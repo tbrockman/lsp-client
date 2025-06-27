@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@codemirror/buildhelper": "^1.0.0",
-    "@codemirror/lang-javascript": "^1.0.0",
+    "@codemirror/lang-javascript": "^6.0.0",
     "typescript": "^5.8.3",
     "typescript-language-server": "^4.3.4"
   }
