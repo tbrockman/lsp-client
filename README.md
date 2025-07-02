@@ -11,8 +11,8 @@ The [project page](https://codemirror.net/) has more information, a
 number of [examples](https://codemirror.net/examples/) and the
 [documentation](https://codemirror.net/docs/).
 
-This code is released under an
-[MIT license](https://github.com/codemirror/lsp-client/tree/main/LICENSE).
+Note that this code **does not** have a license yet. That should soon
+change.
 
 We aim to be an inclusive, welcoming community. To make that explicit,
 we have a [code of
@@ -348,7 +348,7 @@ longer be notified of new changes. You must make sure to call
 this on every mapping you create, except when you use
 <a href="#user-content-lspclient.withmapping"><code>withMapping</code></a>, which will
 automatically schedule a disconnect when the given promise
-resolves.</p>
+resolves or aborts.</p>
 </dd></dl>
 
 </dd>
@@ -412,7 +412,7 @@ open already, call
 <dd><p>Called when an editor holding this file is destroyed or
 reconfigured to no longer hold it. The implementation should
 track this and, when it closes the file, make sure to call
-<a href="#user-content-lspclient.didclose"><code>LSPClient.didOpen</code></a>.</p>
+<a href="#user-content-lspclient.didclose"><code>LSPClient.didClose</code></a>.</p>
 </dd><dt id="user-content-workspace.connected">
   <code><strong><a href="#user-content-workspace.connected">connected</a></strong>()</code></dt>
 

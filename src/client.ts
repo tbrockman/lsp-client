@@ -120,7 +120,7 @@ export class WorkspaceMapping {
   /// this on every mapping you create, except when you use
   /// [`withMapping`](#lsp-client.LSPClient.withMapping), which will
   /// automatically schedule a disconnect when the given promise
-  /// resolves.
+  /// resolves or aborts.
   destroy() {
     this.client.activeMappings = this.client.activeMappings.filter(m => m != this)
   }

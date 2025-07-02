@@ -74,7 +74,7 @@ export abstract class Workspace {
   /// Called when an editor holding this file is destroyed or
   /// reconfigured to no longer hold it. The implementation should
   /// track this and, when it closes the file, make sure to call
-  /// [`LSPClient.didOpen`](#lsp-client.LSPClient.didClose).
+  /// [`LSPClient.didClose`](#lsp-client.LSPClient.didClose).
   abstract closeFile(uri: string, view: EditorView): void
 
   /// Called when the client for this workspace is connected. The
