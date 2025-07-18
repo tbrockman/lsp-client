@@ -186,7 +186,7 @@ export class DummyServer implements Transport {
       let handler = requestHandlers[method]
       if (!handler) throw new ServerError(-32601 /* MethodNotFound */, "Method not found")
       let result = handler(params, this), delay = this.config.delay?.[method]
-      if (delay) setTimeout(() => resolve(result))
+      if (delay) setTimeout(() => resolve(result), delay)
       else queueMicrotask(() => resolve(result))
     })
   }
