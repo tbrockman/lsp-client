@@ -46,7 +46,7 @@ function prefixRegexp(items: readonly lsp.CompletionItem[]) {
     }
   }
   if (!prefixes.length) return /^\w*$/
-  return new RegExp("^(?:" + prefixes.map((RegExp as any).escape || (s => s.replace(/[^\w\s]/g, "\\$&"))).join("|") + ")?\w*$")
+  return new RegExp("^(?:" + prefixes.map((RegExp as any).escape || (s => s.replace(/[^\w\s]/g, "\\$&"))).join("|") + ")?\\w*$")
 }
 
 /// A completion source that requests completions from a language
