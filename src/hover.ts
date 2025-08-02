@@ -55,7 +55,8 @@ function renderTooltipContent(
 } 
 
 function renderCode(plugin: LSPPlugin, code: lsp.MarkedString) {
-  let {language, value} = typeof code == "string" ? {language: null, value: code} : code
+  if (typeof code == "string") return plugin.docToHTML(code, "markdown")
+  let {language, value} = code
   let lang = plugin.client.config.highlightLanguage && plugin.client.config.highlightLanguage(language || "")
   if (!lang) {
     let viewLang = plugin.view.state.facet(languageFacet)
