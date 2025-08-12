@@ -1,10 +1,10 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {showDialog} from "@codemirror/view"
-import {ChangeSet, ChangeDesc, MapMode, Text} from "@codemirror/state"
-import {Language} from "@codemirror/language"
-import {LSPPlugin} from "./plugin"
-import {toPosition, fromPosition} from "./pos"
-import {Workspace, WorkspaceFile, DefaultWorkspace} from "./workspace"
+import { showDialog } from "@codemirror/view"
+import { ChangeSet, ChangeDesc, MapMode, Text } from "@codemirror/state"
+import { Language } from "@codemirror/language"
+import { LSPPlugin } from "./plugin"
+import { toPosition, fromPosition } from "./pos"
+import { Workspace, WorkspaceFile, DefaultWorkspace } from "./workspace"
 
 class Request<Result> {
   declare resolve: (result: Result) => void
@@ -28,7 +28,7 @@ const clientCapabilities: lsp.ClientCapabilities = {
     markdown: {
       parser: "marked",
     },
-  },            
+  },
   textDocument: {
     completion: {
       completionItem: {
@@ -39,7 +39,7 @@ const clientCapabilities: lsp.ClientCapabilities = {
       completionList: {
         itemDefaults: ["commitCharacters", "editRange", "insertTextFormat"]
       },
-      completionItemKind: {valueSet: []},
+      completionItemKind: { valueSet: [] },
       contextSupport: true,
     },
     hover: {
@@ -51,7 +51,7 @@ const clientCapabilities: lsp.ClientCapabilities = {
       contextSupport: true,
       signatureInformation: {
         documentationFormat: ["markdown", "plaintext"],
-        parameterInformation: {labelOffsetSupport: true},
+        parameterInformation: { labelOffsetSupport: true },
         activeParameterSupport: true,
       },
     },
@@ -139,7 +139,7 @@ export type Transport = {
   unsubscribe(handler: (value: string) => void): void
 }
 
-const defaultNotificationHandlers: {[method: string]: (client: LSPClient, params: any) => void} = {
+const defaultNotificationHandlers: { [method: string]: (client: LSPClient, params: any) => void } = {
   "window/logMessage": (client, params: lsp.LogMessageParams) => {
     if (params.type == 1) console.error("[lsp] " + params.message)
     else if (params.type == 2) console.warn("[lsp] " + params.message)
@@ -187,7 +187,7 @@ export type LSPClientConfig = {
   /// and `window/showMessage`. You can pass additional handlers here.
   /// They will be tried before the built-in handlers, and override
   /// those when they return true.
-  notificationHandlers?: {[method: string]: (client: LSPClient, params: any) => boolean}
+  notificationHandlers?: { [method: string]: (client: LSPClient, params: any) => boolean }
   /// When no handler is found for a notification, it will be passed
   /// to this function, if given.
   unhandledNotification?: (client: LSPClient, method: string, params: any) => void
@@ -212,7 +212,7 @@ export class LSPClient {
   /// A promise that resolves once the client connection is initialized. Will be
   /// replaced by a new promise object when you call `disconnect`.
   initializing: Promise<null>
-  declare private init: {resolve: (value: null) => void, reject: (err: any) => void}
+  declare private init: { resolve: (value: null) => void, reject: (err: any) => void }
   private timeout: number
 
   /// Create a client object.
@@ -221,7 +221,7 @@ export class LSPClient {
     readonly config: LSPClientConfig = {}
   ) {
     this.receiveMessage = this.receiveMessage.bind(this)
-    this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
+    this.initializing = new Promise((resolve, reject) => this.init = { resolve, reject })
     this.timeout = config.timeout ?? 3000
     this.workspace = config.workspace ? config.workspace(this) : new DefaultWorkspace(this)
   }
@@ -239,14 +239,14 @@ export class LSPClient {
     transport.subscribe(this.receiveMessage)
     this.requestInner<lsp.InitializeParams, lsp.InitializeResult>("initialize", {
       processId: null,
-      clientInfo: {name: "@codemirror/lsp-client"},
+      clientInfo: { name: "@codemirror/lsp-client" },
       rootUri: this.config.rootUri || null,
       capabilities: clientCapabilities
     }).promise.then(resp => {
       this.serverCapabilities = resp.capabilities
       let sync = resp.capabilities.textDocumentSync
       this.supportSync = sync == null ? 0 : typeof sync == "number" ? sync : sync.change ?? 0
-      transport.send(JSON.stringify({jsonrpc: "2.0", method: "initialized", params: {}}))
+      transport.send(JSON.stringify({ jsonrpc: "2.0", method: "initialized", params: {} }))
       this.init.resolve(null)
     }, this.init.reject)
     this.workspace.connected()
@@ -257,7 +257,7 @@ export class LSPClient {
   disconnect() {
     if (this.transport) this.transport.unsubscribe(this.receiveMessage)
     this.serverCapabilities = null
-    this.initializing = new Promise((resolve, reject) => this.init = {resolve, reject})
+    this.initializing = new Promise((resolve, reject) => this.init = { resolve, reject })
     this.workspace.disconnected()
   }
 
@@ -275,7 +275,7 @@ export class LSPClient {
 
   /// Send a `textDocument/didClose` notification to the server.
   didClose(uri: string) {
-    this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", {textDocument: {uri}})
+    this.notification<lsp.DidCloseTextDocumentParams>("textDocument/didClose", { textDocument: { uri } })
   }
 
   private receiveMessage(msg: string) {
@@ -301,7 +301,7 @@ export class LSPClient {
       let resp: lsp.ResponseMessage = {
         jsonrpc: "2.0",
         id: value.id,
-        error: {code: -32601 /* MethodNotFound */, message: "Method not implemented"}
+        error: { code: -32601 /* MethodNotFound */, message: "Method not implemented" }
       }
       this.transport!.send(JSON.stringify(resp))
     }
@@ -335,7 +335,7 @@ export class LSPClient {
     let req = new Request<Result>(id, params, setTimeout(() => this.timeoutRequest(req), this.timeout))
     this.requests.push(req)
     try { this.transport!.send(JSON.stringify(data)) }
-    catch(e) { req.reject(e) }
+    catch (e) { req.reject(e) }
     return req
   }
 
@@ -388,11 +388,11 @@ export class LSPClient {
   /// most types of requests, to make sure the server isn't working
   /// with outdated information.
   sync() {
-    for (let {file, changes, prevDoc} of this.workspace.syncFiles()) {
+    for (let { file, changes, prevDoc } of this.workspace.syncFiles()) {
       for (let mapping of this.activeMappings)
         mapping.addChanges(file.uri, changes)
       if (this.supportSync) this.notification<lsp.DidChangeTextDocumentParams>("textDocument/didChange", {
-        textDocument: {uri: file.uri, version: file.version},
+        textDocument: { uri: file.uri, version: file.version },
         contentChanges: contentChangesFor(file, prevDoc, changes, this.supportSync == 2 /* Incremental */)
       })
     }
@@ -416,11 +416,11 @@ function contentChangesFor(
   supportInc: boolean
 ): lsp.TextDocumentContentChangeEvent[] {
   if (!supportInc || file.doc.length < Sync.AlwaysIfSmaller)
-    return [{text: file.doc.toString()}]
+    return [{ text: file.doc.toString() }]
   let events: lsp.TextDocumentContentChangeEvent[] = []
   changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
     events.push({
-      range: {start: toPosition(startDoc, fromA), end: toPosition(startDoc, toA)},
+      range: { start: toPosition(startDoc, fromA), end: toPosition(startDoc, toA) },
       text: inserted.toString()
     })
   })

@@ -1,7 +1,8 @@
-import {Text, ChangeSet, TransactionSpec} from "@codemirror/state"
-import {EditorView} from "@codemirror/view"
-import {LSPClient} from "./client"
-import {LSPPlugin} from "./plugin"
+import { Text, ChangeSet, TransactionSpec } from "@codemirror/state"
+import { EditorView } from "@codemirror/view"
+import { LSPClient } from "./client"
+import { LSPClient as JSONLSPClient } from "./jsonclient"
+import { LSPPlugin } from "./plugin"
 
 /// A file that is open in a workspace.
 export interface WorkspaceFile {
@@ -40,12 +41,12 @@ export abstract class Workspace {
   /// workspace.
   constructor(
     /// The LSP client associated with this workspace.
-    readonly client: LSPClient
-  ) {}
+    readonly client: LSPClient | JSONLSPClient
+  ) { }
 
   /// Find the open file with the given URI, if it exists. The default
   /// implementation just looks it up in `this.files`.
-  getFile(uri: string) : WorkspaceFile | null {
+  getFile(uri: string): WorkspaceFile | null {
     return this.files.find(f => f.uri == uri) || null
   }
 
@@ -87,7 +88,7 @@ export abstract class Workspace {
 
   /// Called when the client for this workspace is disconnected. The
   /// default implementation does nothing.
-  disconnected(): void {}
+  disconnected(): void { }
 
   /// Called when a server-initiated change to a file is applied. The
   /// default implementation simply dispatches the update to the
@@ -111,17 +112,17 @@ export abstract class Workspace {
 
 class DefaultWorkspaceFile implements WorkspaceFile {
   constructor(readonly uri: string,
-              readonly languageId: string,
-              public version: number,
-              public doc: Text,
-              readonly view: EditorView) {}
+    readonly languageId: string,
+    public version: number,
+    public doc: Text,
+    readonly view: EditorView) { }
 
   getView() { return this.view }
 }
 
 export class DefaultWorkspace extends Workspace {
   files: DefaultWorkspaceFile[] = []
-  private fileVersions: {[uri: string]: number} = Object.create(null)
+  private fileVersions: { [uri: string]: number } = Object.create(null)
 
   nextFileVersion(uri: string) {
     return this.fileVersions[uri] = (this.fileVersions[uri] ?? -1) + 1
@@ -134,7 +135,7 @@ export class DefaultWorkspace extends Workspace {
       if (!plugin) continue
       let changes = plugin.unsyncedChanges
       if (!changes.empty) {
-        result.push({changes, file, prevDoc: file.doc})
+        result.push({ changes, file, prevDoc: file.doc })
         file.doc = file.view.state.doc
         file.version = this.nextFileVersion(file.uri)
         plugin.clear()
@@ -146,7 +147,7 @@ export class DefaultWorkspace extends Workspace {
   openFile(uri: string, languageId: string, view: EditorView) {
     if (this.getFile(uri))
       throw new Error("Default workspace implementation doesn't support multiple views on the same file")
-    let file = new DefaultWorkspaceFile(uri, languageId, this.nextFileVersion(uri), view.state.doc, view) 
+    let file = new DefaultWorkspaceFile(uri, languageId, this.nextFileVersion(uri), view.state.doc, view)
     this.files.push(file)
     this.client.didOpen(file)
   }
