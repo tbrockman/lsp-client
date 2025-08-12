@@ -69,7 +69,7 @@ async function run(caseName: string) {
 
     console.log('Starting benchmark...');
     const before = await client.send("Performance.getMetrics");
-    console.log('Initial metrics collected, running benchmark...');
+    console.log('Initial metrics collected, running benchmark...', { before });
     const result = await page.evaluate(async (caseName) => {
         return window.benchmark(caseName);
     }, caseName);
@@ -80,8 +80,8 @@ async function run(caseName: string) {
     console.log({
         caseName,
         result,
-        before: before.metrics.length,
-        after: after.metrics.length
+        before,
+        after
     });
 
     await browser.close();

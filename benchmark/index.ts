@@ -4,6 +4,7 @@ import { LSPClient, JSONLSPClient, languageServerSupport } from "../dist/index.j
 import { JSONRPCMessage } from "../src/jsonclient.js";
 import * as Comlink from 'comlink'
 import { FilesystemWorker } from "./fs.worker.js";
+import { Transaction } from "@codemirror/state";
 
 class Transport {
     handlers: Set<(message: any) => void>;
@@ -105,16 +106,13 @@ window.benchmark = async function (caseName) {
         store = createLanguageServer;
         await createLanguageServer(Comlink.proxy({ fs }));
 
-        // Create client based on case
         let client;
         let transport;
 
         if (caseName === 'string') {
-            // Use string-based transport (original LSPClient)
             transport = new Transport(worker);
             client = new LSPClient().connect(transport);
         } else if (caseName === 'object') {
-            // Use object-based transport (JSONLSPClient)
             transport = new JSONTransport(worker);
             client = new JSONLSPClient().connect(transport);
         } else {
@@ -122,13 +120,9 @@ window.benchmark = async function (caseName) {
         }
 
         statusEl.textContent = `Connecting ${caseName} client...`;
-
-        // Connect to the language server
         await client.connect(transport).initializing;
-
         statusEl.textContent = `Connected! Creating editor with ${caseName} client...`;
 
-        // Create CodeMirror editor with LSP support
         const view = new EditorView({
             doc: `// ${caseName} benchmark test`,
             extensions: [
@@ -141,19 +135,22 @@ window.benchmark = async function (caseName) {
         statusEl.textContent = `\`${caseName}\` benchmark running...`;
 
         for (let i = 0; i < sampleText.length; i++) {
-            view.dispatch({
-                changes: { from: view.state.doc.length, insert: sampleText[i] },
-            });
+            view.dispatch(
+                {
+                    changes: { from: view.state.doc.length, insert: sampleText[i] },
+                    annotations: Transaction.userEvent.of('input.type')
+                })
+
             await new Promise(resolve => setTimeout(resolve, 10)); // Some delay
         }
 
         // Return some benchmark data
-        return {
+        return JSON.stringify({
             caseName,
             clientType: caseName === 'string' ? 'LSPClient' : 'JSONLSPClient',
             connected: client.connected,
             capabilities: client.serverCapabilities
-        };
+        });
 
     } catch (error) {
         statusEl.textContent = `Error in ${caseName} benchmark: ${error.message}`;
