@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 // Plugin to create filesystem snapshot
 function createFilesystemSnapshot() {
     return {
-        name: 'filesystem-snapshot',
+        name: 'snapshot',
         buildStart() {
             // Create snapshot of TypeScript lib files
             const nodeModulesPath = join(__dirname, '../node_modules');
@@ -71,7 +71,7 @@ function createFilesystemSnapshot() {
                 fs.mkdirSync(publicDir, { recursive: true });
             }
 
-            const snapshotPath = join(publicDir, 'filesystem-snapshot.json');
+            const snapshotPath = join(publicDir, 'snapshot.bin');
             fs.writeFileSync(snapshotPath, uint8);
         }
     };

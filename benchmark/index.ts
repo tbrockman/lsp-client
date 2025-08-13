@@ -1,64 +1,11 @@
 import { EditorView, basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { LSPClient, JSONLSPClient, languageServerSupport } from "../dist/index.js";
-import { JSONRPCMessage } from "../src/jsonclient.js";
 import * as Comlink from 'comlink'
 import { FilesystemWorker } from "./fs.worker.ts";
 import { Transaction } from "@codemirror/state";
+import { JSONTransport, Transport } from "./transport.js";
 
-class Transport {
-    handlers: Set<(message: any) => void>;
-
-    constructor(public worker: SharedWorker) {
-        this.worker = worker;
-        this.handlers = new Set();
-        this.worker.port.onmessage = (event) => {
-            for (const handler of this.handlers) {
-                handler(JSON.stringify(event.data));
-            }
-        };
-    }
-
-    send(message: string) {
-        this.worker.port.postMessage(JSON.parse(message));
-    }
-
-    subscribe(handler: (message: string) => void) {
-        this.handlers.add(handler);
-    }
-
-    unsubscribe(handler: (message: string) => void) {
-        this.handlers.delete(handler);
-    }
-}
-
-// JSON Transport for the JSON client
-class JSONTransport {
-    handlers: Set<(message: any) => void>;
-
-    constructor(public worker: SharedWorker) {
-        this.worker = worker;
-        this.handlers = new Set();
-        this.worker.port.onmessage = (event) => {
-            for (const handler of this.handlers) {
-                handler(event.data);
-            }
-        };
-        this.worker.port.start();
-    }
-
-    send(message: JSONRPCMessage) {
-        this.worker.port.postMessage(message);
-    }
-
-    subscribe(handler: (message: JSONRPCMessage) => void) {
-        this.handlers.add(handler);
-    }
-
-    unsubscribe(handler: (message: JSONRPCMessage) => void) {
-        this.handlers.delete(handler);
-    }
-}
 
 const sampleText = `
 const channel = new MessageChannel();
@@ -97,7 +44,7 @@ window.benchmark = async function (caseName) {
         const fsWorker = new SharedWorker(fsWorkerUrl, { type: 'module' });
         fsWorker.port.start();
         const result = Comlink.wrap<{ proxy: typeof FilesystemWorker.proxy }>(fsWorker.port);
-        const fs = await result.proxy('/filesystem-snapshot.json');
+        const fs = await result.proxy('/snapshot.bin');
 
         // Create the worker
         const worker = new SharedWorker(new URL('./lsp.worker.ts', import.meta.url), { type: 'module' });

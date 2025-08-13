@@ -13,7 +13,6 @@
   "scripts": {
     "test": "cm-runtests",
     "prepare": "cm-buildhelper src/index.ts",
-    "build:benchmark": "node benchmark/build.js",
     "benchmark": "pnpm dlx tsx benchmark/run.ts"
   },
   "dependencies": {
