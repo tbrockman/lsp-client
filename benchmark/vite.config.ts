@@ -84,6 +84,7 @@ export default defineConfig({
         port: 3000,
         host: 'localhost'
     },
+    // So no automated reloading for optimization during benchmarking
     optimizeDeps: {
         include: [
             'memfs',
@@ -121,13 +122,11 @@ export default defineConfig({
     },
     plugins: [
         nodePolyfills({
-            // Whether to polyfill specific globals.
             globals: {
-                Buffer: true, // can also be 'build', 'dev', or false
+                Buffer: true,
                 global: true,
                 process: true,
             },
-            // Whether to polyfill `node:` protocol imports.
             protocolImports: true,
         }),
         createFilesystemSnapshot(),

@@ -333,7 +333,8 @@ export class LSPClient {
             method,
             params: params as any
         }
-        let req = new Request<Result>(id, params, setTimeout(() => this.timeoutRequest(req), this.timeout))
+        let timeoutHandle: any = setTimeout(() => this.timeoutRequest(req), this.timeout)
+        let req = new Request<Result>(id, params, timeoutHandle)
         this.requests.push(req)
         try { this.transport!.send(data) }
         catch (e) { req.reject(e) }

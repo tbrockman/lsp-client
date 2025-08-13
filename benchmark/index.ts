@@ -3,33 +3,8 @@ import { javascript } from "@codemirror/lang-javascript";
 import { LSPClient, JSONLSPClient, languageServerSupport } from "../dist/index.js";
 import * as Comlink from 'comlink'
 import { FilesystemWorker } from "./fs.worker.ts";
-import { Transaction } from "@codemirror/state";
 import { JSONTransport, Transport } from "./transport.js";
 
-
-const sampleText = `
-const channel = new MessageChannel();
-const output = document.querySelector(".output");
-const iframe = document.querySelector("iframe");
-
-// Wait for the iframe to load
-iframe.addEventListener("load", onLoad);
-
-function onLoad() {
-  // Listen for messages on port1
-  channel.port1.onmessage = onMessage;
-
-  // Transfer port2 to the iframe
-  iframe.contentWindow.postMessage("Hello from the main page!", "*", [
-    channel.port2,
-  ]);
-}
-
-// Handle messages received on port1
-function onMessage(e) {
-  output.innerHTML = e.data;
-}
-`;
 let store: any;
 
 window.benchmark = async function (caseName) {
@@ -79,26 +54,10 @@ window.benchmark = async function (caseName) {
             ],
             parent: editorEl
         });
-        statusEl.textContent = `\`${caseName}\` benchmark running...`;
+        statusEl.textContent = `\`${caseName}\` benchmark ready.`;
 
-        for (let i = 0; i < sampleText.length; i++) {
-            view.dispatch(
-                {
-                    changes: { from: view.state.doc.length, insert: sampleText[i] },
-                    annotations: Transaction.userEvent.of('input.type')
-                })
-
-            await new Promise(resolve => setTimeout(resolve, 10)); // Some delay
-        }
-
-        // Return some benchmark data
-        return JSON.stringify({
-            caseName,
-            clientType: caseName === 'string' ? 'LSPClient' : 'JSONLSPClient',
-            connected: client.connected,
-            capabilities: client.serverCapabilities
-        });
-
+        // Expose EditorView to Playwright
+        window.view = view;
     } catch (error) {
         statusEl.textContent = `Error in ${caseName} benchmark: ${error.message}`;
         console.error(`Benchmark ${caseName} failed:`, error);
