@@ -13,18 +13,26 @@ declare global {
 }
 
 // Start Vite dev server
-function startViteServer(): Promise<void> {
+function startViteServer(): Promise<number> {
     return new Promise((resolve, reject) => {
         const vite = spawn('npx', ['vite', '--config', 'benchmark/vite.config.js'], {
             stdio: 'pipe',
             cwd: dirname(__dirname)
         });
 
+        let resolved = false;
+
         vite.stdout.on('data', (data) => {
             const output = data.toString();
             console.log(output);
-            if (output.includes('Local:') && output.includes('3000')) {
-                resolve();
+
+            // Look for the Local URL in Vite's output
+            const localMatch = output.match(/Local:\s+http:\/\/localhost:(\d+)/);
+            if (localMatch && !resolved) {
+                const port = parseInt(localMatch[1], 10);
+                console.log(`Vite server started on port ${port}`);
+                resolved = true;
+                resolve(port);
             }
         });
 
@@ -32,22 +40,37 @@ function startViteServer(): Promise<void> {
             console.error('Vite error:', data.toString());
         });
 
-        vite.on('error', reject);
+        vite.on('error', (error) => {
+            if (!resolved) {
+                resolved = true;
+                reject(error);
+            }
+        });
 
-        // Give it some time to start
-        setTimeout(resolve, 3000);
+        vite.on('close', (code) => {
+            if (!resolved && code !== 0) {
+                resolved = true;
+                reject(new Error(`Vite process exited with code ${code}`));
+            }
+        });
+
+        // Timeout after 30 seconds if Vite doesn't start
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                reject(new Error('Timeout waiting for Vite server to start'));
+            }
+        }, 30000);
     });
 }
 
 async function run(caseName: string) {
-    const port = 3000;
-
     // Start Vite dev server
     console.log('Starting Vite dev server...');
-    await startViteServer();
+    const port = await startViteServer();
 
     const browser = await chromium.launch({
-        headless: true,
+        headless: false,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const context = await browser.newContext();
@@ -60,7 +83,7 @@ async function run(caseName: string) {
     console.log('Navigating to benchmark page...');
 
     // Navigate to the served HTML file
-    await page.goto(`http://localhost:${port}/index.html`);
+    await page.goto(`http://localhost:${port}/index.html`, { timeout: 120000 });
 
     console.log(`Running benchmark for case: ${caseName}`);
     // Wait for the page to load and the benchmark function to be available
@@ -90,3 +113,4 @@ async function run(caseName: string) {
 
 await run('string');
 await run('object');
+process.exit(0);

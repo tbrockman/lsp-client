@@ -3,7 +3,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { LSPClient, JSONLSPClient, languageServerSupport } from "../dist/index.js";
 import { JSONRPCMessage } from "../src/jsonclient.js";
 import * as Comlink from 'comlink'
-import { FilesystemWorker } from "./fs.worker.js";
+import { FilesystemWorker } from "./fs.worker.ts";
 import { Transaction } from "@codemirror/state";
 
 class Transport {
@@ -93,14 +93,14 @@ window.benchmark = async function (caseName) {
         statusEl.textContent = `Starting ${caseName} benchmark...`;
 
         // Create filesystem worker
-        const fsWorkerUrl = new URL('./fs.worker.js', import.meta.url);
+        const fsWorkerUrl = new URL('./fs.worker.ts', import.meta.url);
         const fsWorker = new SharedWorker(fsWorkerUrl, { type: 'module' });
         fsWorker.port.start();
         const result = Comlink.wrap<{ proxy: typeof FilesystemWorker.proxy }>(fsWorker.port);
         const fs = await result.proxy('/filesystem-snapshot.json');
 
         // Create the worker
-        const worker = new SharedWorker(new URL('./lsp.worker.js', import.meta.url), { type: 'module' });
+        const worker = new SharedWorker(new URL('./lsp.worker.ts', import.meta.url), { type: 'module' });
         worker.port.start();
         const { createLanguageServer } = Comlink.wrap<{ createLanguageServer: ({ fs }: { fs: Comlink.Remote<FilesystemWorker> }) => Promise<void> }>(worker.port);
         store = createLanguageServer;

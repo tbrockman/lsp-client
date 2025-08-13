@@ -84,6 +84,19 @@ export default defineConfig({
         port: 3000,
         host: 'localhost'
     },
+    optimizeDeps: {
+        include: [
+            'memfs',
+            'memfs/lib/snapshot',
+            '@volar/language-server',
+            '@volar/language-server/browser',
+            'vscode-languageserver/browser',
+            'volar-service-typescript',
+            'typescript',
+            'comlink',
+            'vscode-uri'
+        ]
+    },
     resolve: {
         alias: {
             // Ensure proper resolution of the dist files
@@ -92,6 +105,19 @@ export default defineConfig({
     },
     define: {
         global: 'globalThis'
+    },
+    worker: {
+        format: 'es',
+        plugins: () => [
+            nodePolyfills({
+                globals: {
+                    Buffer: true,
+                    global: true,
+                    process: true,
+                },
+                protocolImports: true,
+            })
+        ]
     },
     plugins: [
         nodePolyfills({
