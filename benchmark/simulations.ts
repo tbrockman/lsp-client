@@ -56,23 +56,6 @@ const result = Database.createAdmin(0, 'admin', 'admin@example.com')
 const mod = Database.createModerator(1, 'mod', 'mod@notexported.ca')
 `;
 
-
-export async function simulateTyping(context: BenchmarkContext) {
-    await context.setStatusText('Running regular typing...');
-
-    await context.page.evaluate(async (text) => {
-        if (!window.view) return;
-
-        for (let i = 0; i < text.length; i++) {
-            window.view.dispatch({
-                changes: { from: i == 0 ? 0 : window.view.state.doc.length, to: i == 0 ? window.view.state.doc.length : undefined, insert: text[i] },
-                annotations: window.userEvent.of('input.type')
-            });
-            await new Promise(resolve => setTimeout(resolve, 10));
-        }
-    }, sampleText);
-}
-
 export async function simulateHoverOperations(context: BenchmarkContext) {
     await context.setStatusText('Running hover operations...');
 
@@ -251,42 +234,6 @@ export async function simulateLargeBlockOperations(context: BenchmarkContext) {
         });
 
     }, [largeCodeBlock, sampleText]);
-}
-
-export async function simulateDiagnosticGeneration(context: BenchmarkContext) {
-    await context.setStatusText('Running diagnostic generation...');
-
-    const codeWithErrors = `// Code with intentional errors for diagnostic testing
-const undefinedVar = someUndefinedVariable;
-function duplicateFunction() {}
-function duplicateFunction() {} // Duplicate declaration
-const invalidSyntax = {
-    property: value, // Missing quotes
-    anotherProp:
-}; // Missing value
-let unusedVariable = 'never used';
-`;
-
-    await context.page.evaluate(async (errorCode) => {
-        if (!window.view) return;
-
-        // Insert code with errors
-        window.view.dispatch({
-            changes: { from: 0, to: window.view.state.doc.length, insert: errorCode },
-            annotations: window.userEvent.of('input.paste')
-        });
-
-        // Wait some amount of time for diagnostics to be generated
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        window.view.dispatch({
-            changes: {
-                from: 0,
-                to: window.view.state.doc.length,
-                insert: ""
-            }
-        });
-    }, codeWithErrors);
 }
 
 export async function simulateGoToDefinition(context: BenchmarkContext) {
@@ -579,7 +526,6 @@ function overloadedFunction(x: number | boolean | string, param2?: number, param
 }
 
 export const simulations = [
-    { name: 'regular-typing', fn: simulateTyping },
     { name: 'hover-operations', fn: simulateHoverOperations },
     { name: 'completion-requests', fn: simulateCompletionRequests },
     { name: 'go-to-definition', fn: simulateGoToDefinition },
@@ -588,5 +534,4 @@ export const simulations = [
     { name: 'format-document', fn: simulateFormatDocument },
     { name: 'signature-navigation', fn: simulateSignatureNavigation },
     { name: 'large-block-operations', fn: simulateLargeBlockOperations },
-    { name: 'diagnostic-generation', fn: simulateDiagnosticGeneration }
 ];

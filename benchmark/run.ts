@@ -33,7 +33,6 @@ interface BenchmarkResult {
     caseName: string;
     beforeMetrics: Metric[];
     afterMetrics: Metric[];
-    result: any;
     executionTime: number;
     cpuStats: CPUStats;
 }
@@ -42,7 +41,6 @@ interface AveragedBenchmarkResult {
     caseName: string;
     beforeMetrics: Metric[];
     afterMetrics: Metric[];
-    result: any;
     executionTime: number;
     cpuStats: CPUStats;
     runCount: number;
@@ -94,7 +92,6 @@ function averageBenchmarkResults(results: BenchmarkResult[]): AveragedBenchmarkR
         caseName,
         beforeMetrics: avgBeforeMetrics,
         afterMetrics: avgAfterMetrics,
-        result: results[0].result, // Use first result as representative
         executionTime: avgExecutionTime,
         cpuStats: {
             average: avgCpuAverage,
@@ -381,7 +378,6 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
                     caseName,
                     beforeMetrics: before.metrics,
                     afterMetrics: after.metrics,
-                    result: null, // No specific result needed for these benchmarks
                     executionTime,
                     cpuStats
                 };
