@@ -1,0 +1,71 @@
+📊 Performance Metrics Comparison: "string" vs "object" benchmarks (averaged over 16 and 16 runs):
+================================================================================
+
+🔍 Overall Performance Summary:
+| Metric                           | String       | Object       | Difference   | Change    |
+|----------------------------------|--------------|--------------|--------------|-----------|
+| Timestamp                        | 13.781ms     | 13.703ms     | 0.078ms      | 📉 -0.6%  |
+| JSEventListeners                 | 55.000       | 55.000       | 0.000        | ➡️ 0.0%   |
+| LayoutObjects                    | 4600.000     | 4598.938     | 1.063        | 📉 -0.0%  |
+| Nodes                            | 4638.000     | 4638.000     | 0.000        | ➡️ 0.0%   |
+| ContextLifecycleStateObservers   | 1.000        | 1.000        | 0.000        | ➡️ 0.0%   |
+| ArrayBufferContents              | 249.375      | 249.563      | 0.188        | 📈 0.1%   |
+| LayoutCount                      | 160.625      | 158.438      | 2.188        | 📉 -1.4%  |
+| RecalcStyleCount                 | 353.438      | 347.313      | 6.125        | 📉 -1.7%  |
+| LayoutDuration                   | 0.049ms      | 0.049ms      | 0.000ms      | 📈 0.7%   |
+| RecalcStyleDuration              | 0.044ms      | 0.044ms      | 0.001ms      | 📉 -1.2%  |
+| DevToolsCommandDuration          | 0.199ms      | 0.196ms      | 0.003ms      | 📉 -1.6%  |
+| ScriptDuration                   | 0.139ms      | 0.135ms      | 0.004ms      | 📉 -3.1%  |
+| TaskDuration                     | 0.675ms      | 0.677ms      | 0.002ms      | 📈 0.3%   |
+| TaskOtherDuration                | 0.243ms      | 0.253ms      | 0.009ms      | 📈 3.9%   |
+| ThreadTime                       | 0.826ms      | 0.831ms      | 0.005ms      | 📈 0.6%   |
+| ProcessTime                      | 3.168ms      | 3.190ms      | 0.022ms      | 📈 0.7%   |
+| JSHeapUsedSize                   | 22371.91KB   | 20623.54KB   | 1748.37KB    | 📉 -7.8%  |
+| JSHeapTotalSize                  | 44016.00KB   | 35008.00KB   | 9008.00KB    | 📉 -20.5% |
+| ExecutionTime                    | 13362.611ms  | 13290.577ms  | 72.034ms     | 📉 -0.5%  |
+| ProfileTime                      | 41163.586ms  | 40943.748ms  | 219.839ms    | 📉 -0.5%  |
+| ProfileSamples                   | 32260        | 31522        | 738          | 📉 -2.3%  |
+
+🔍 PAGE Performance Metrics:
+| Metric                           | String       | Object       | Difference   | Change    |
+|----------------------------------|--------------|--------------|--------------|-----------|
+| Timestamp                        | 13.781ms     | 13.703ms     | 0.078ms      | 📉 -0.6%  |
+| JSEventListeners                 | 55.000       | 55.000       | 0.000        | ➡️ 0.0%   |
+| LayoutObjects                    | 4600.000     | 4598.938     | 1.063        | 📉 -0.0%  |
+| Nodes                            | 4638.000     | 4638.000     | 0.000        | ➡️ 0.0%   |
+| ContextLifecycleStateObservers   | 1.000        | 1.000        | 0.000        | ➡️ 0.0%   |
+| ArrayBufferContents              | 249.375      | 249.563      | 0.188        | 📈 0.1%   |
+| LayoutCount                      | 160.625      | 158.438      | 2.188        | 📉 -1.4%  |
+| RecalcStyleCount                 | 353.438      | 347.313      | 6.125        | 📉 -1.7%  |
+| LayoutDuration                   | 0.049ms      | 0.049ms      | 0.000ms      | 📈 0.7%   |
+| RecalcStyleDuration              | 0.044ms      | 0.044ms      | 0.001ms      | 📉 -1.2%  |
+| DevToolsCommandDuration          | 0.199ms      | 0.196ms      | 0.003ms      | 📉 -1.6%  |
+| ScriptDuration                   | 0.139ms      | 0.135ms      | 0.004ms      | 📉 -3.1%  |
+| TaskDuration                     | 0.675ms      | 0.677ms      | 0.002ms      | 📈 0.3%   |
+| TaskOtherDuration                | 0.243ms      | 0.253ms      | 0.009ms      | 📈 3.9%   |
+| ThreadTime                       | 0.826ms      | 0.831ms      | 0.005ms      | 📈 0.6%   |
+| ProcessTime                      | 3.168ms      | 3.190ms      | 0.022ms      | 📈 0.7%   |
+| JSHeapUsedSize                   | 6339.04KB    | 6368.77KB    | 29.74KB      | 📈 0.5%   |
+| JSHeapTotalSize                  | 15216.00KB   | 7088.00KB    | 8128.00KB    | 📉 -53.4% |
+| ProfileTime                      | 13762.625ms  | 13685.982ms  | 76.643ms     | 📉 -0.6%  |
+| ProfileSamples                   | 10815        | 10565        | 250          | 📉 -2.3%  |
+| JSHeapUsedSize                   | 6339.04KB    | 6368.77KB    | 29.74KB      | 📈 0.5%   |
+| JSHeapTotalSize                  | 15216.00KB   | 7088.00KB    | 8128.00KB    | 📉 -53.4% |
+
+🔍 FS-WORKER Performance Metrics:
+| Metric                           | String       | Object       | Difference   | Change    |
+|----------------------------------|--------------|--------------|--------------|-----------|
+| ProfileTime                      | 13716.870ms  | 13643.878ms  | 72.992ms     | 📉 -0.5%  |
+| ProfileSamples                   | 10729        | 10481        | 248          | 📉 -2.3%  |
+| JSHeapUsedSize                   | 107.62KB     | 107.45KB     | 0.17KB       | 📉 -0.2%  |
+| JSHeapTotalSize                  | 0.00KB       | 0.00KB       | 0.00KB       | ➡️ 0.0%   |
+
+🔍 LSP-WORKER Performance Metrics:
+| Metric                           | String       | Object       | Difference   | Change    |
+|----------------------------------|--------------|--------------|--------------|-----------|
+| ProfileTime                      | 13684.091ms  | 13613.888ms  | 70.203ms     | 📉 -0.5%  |
+| ProfileSamples                   | 10717        | 10477        | 240          | 📉 -2.2%  |
+| JSHeapUsedSize                   | 15925.25KB   | 14147.31KB   | 1777.94KB    | 📉 -11.2% |
+| JSHeapTotalSize                  | 28800.00KB   | 27920.00KB   | 880.00KB     | 📉 -3.1%  |
+
+================================================================================
