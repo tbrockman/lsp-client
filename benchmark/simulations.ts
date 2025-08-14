@@ -83,31 +83,30 @@ export async function simulateHoverOperations(context: BenchmarkContext) {
 
     for (const target of hoverTargets) {
         try {
-            const textElement = context.page.getByText(target).first();
+            // Use Puppeteer's evaluate to find text and get coordinates
+            const hoverCoords = await context.page.evaluate((searchTarget) => {
+                // Find all text nodes in the document
+                const walker = document.createTreeWalker(
+                    document.body,
+                    NodeFilter.SHOW_TEXT
+                );
 
-            if (await textElement.isVisible()) {
-                // Use the textElement to create a range and get exact coordinates
-                const hoverCoords = await textElement.evaluate((element, searchTarget) => {
-                    // Create a tree walker to find text nodes within this specific element
-                    const walker = document.createTreeWalker(
-                        element,
-                        NodeFilter.SHOW_TEXT
-                    );
+                let textNode;
+                while (textNode = walker.nextNode()) {
+                    const textContent = textNode.textContent || '';
+                    const targetIndex = textContent.toLowerCase().indexOf(searchTarget.toLowerCase());
 
-                    let textNode;
-                    while (textNode = walker.nextNode()) {
-                        const textContent = textNode.textContent || '';
-                        const targetIndex = textContent.toLowerCase().indexOf(searchTarget.toLowerCase());
+                    if (targetIndex >= 0) {
+                        // Create a range for the exact target text
+                        const range = document.createRange();
+                        range.setStart(textNode, targetIndex);
+                        range.setEnd(textNode, targetIndex + searchTarget.length);
 
-                        if (targetIndex >= 0) {
-                            // Create a range for the exact target text
-                            const range = document.createRange();
-                            range.setStart(textNode, targetIndex);
-                            range.setEnd(textNode, targetIndex + searchTarget.length);
+                        // Get the bounding rectangle of the range
+                        const rect = range.getBoundingClientRect();
 
-                            // Get the bounding rectangle of the range
-                            const rect = range.getBoundingClientRect();
-
+                        // Check if the element is visible
+                        if (rect.width > 0 && rect.height > 0) {
                             return {
                                 x: rect.left + rect.width / 2,
                                 y: rect.top + rect.height / 2,
@@ -117,18 +116,16 @@ export async function simulateHoverOperations(context: BenchmarkContext) {
                             };
                         }
                     }
-
-                    return { found: false };
-                }, target);
-
-                if (hoverCoords.found && hoverCoords.x !== undefined && hoverCoords.y !== undefined) {
-                    // Hover at the exact calculated position
-                    await context.page.mouse.move(hoverCoords.x, hoverCoords.y);
-                } else {
-                    await textElement.hover();
                 }
+
+                return { found: false };
+            }, target);
+
+            if (hoverCoords.found && hoverCoords.x !== undefined && hoverCoords.y !== undefined) {
+                // Hover at the exact calculated position
+                await context.page.mouse.move(hoverCoords.x, hoverCoords.y);
             } else {
-                console.log(`Element not visible for "${target}"`);
+                console.log(`Element not found or not visible for "${target}"`);
             }
         } catch (error) {
             console.log(`Strategy failed for "${target}": ${error.message}`);
@@ -190,7 +187,9 @@ const arr = [1, 2, 3];
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Trigger completion with Control-Space
-        await context.page.keyboard.press('Control+Space');
+        await context.page.keyboard.down('Control');
+        await context.page.keyboard.press('Space');
+        await context.page.keyboard.up('Control');
         await new Promise(resolve => setTimeout(resolve, 250));
 
         // Press Escape to close any completion popup
@@ -350,7 +349,9 @@ export async function simulateFindReferences(context: BenchmarkContext) {
             if (!positioned) continue;
 
             // Press Shift+F12 for find references
-            await context.page.keyboard.press('Shift+F12');
+            await context.page.keyboard.down('Shift');
+            await context.page.keyboard.press('F12');
+            await context.page.keyboard.up('Shift');
             await new Promise(resolve => setTimeout(resolve, 250));
 
         } catch (error) {
@@ -456,7 +457,11 @@ return x;
         window.view.focus();
     }, unformattedCode);
 
-    await context.page.keyboard.press('Control+Shift+K');
+    await context.page.keyboard.down('Control');
+    await context.page.keyboard.down('Shift');
+    await context.page.keyboard.press('KeyK');
+    await context.page.keyboard.up('Shift');
+    await context.page.keyboard.up('Control');
     await new Promise(resolve => setTimeout(resolve, 500));
 }
 
@@ -507,17 +512,29 @@ function overloadedFunction(x: number | boolean | string, param2?: number, param
     const modKey = isMac ? 'Meta' : 'Control';
 
     // Trigger signature help first
-    await context.page.keyboard.press(`${modKey}+Shift+Space`);
+    await context.page.keyboard.down(modKey);
+    await context.page.keyboard.down('Shift');
+    await context.page.keyboard.press('Space');
+    await context.page.keyboard.up('Shift');
+    await context.page.keyboard.up(modKey);
     await new Promise(resolve => setTimeout(resolve, 250));
 
     // Navigate through signatures
     for (let i = 0; i < 3; i++) {
-        await context.page.keyboard.press(`${modKey}+Shift+ArrowDown`);
+        await context.page.keyboard.down(modKey);
+        await context.page.keyboard.down('Shift');
+        await context.page.keyboard.press('ArrowDown');
+        await context.page.keyboard.up('Shift');
+        await context.page.keyboard.up(modKey);
         await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     for (let i = 0; i < 3; i++) {
-        await context.page.keyboard.press(`${modKey}+Shift+ArrowUp`);
+        await context.page.keyboard.down(modKey);
+        await context.page.keyboard.down('Shift');
+        await context.page.keyboard.press('ArrowUp');
+        await context.page.keyboard.up('Shift');
+        await context.page.keyboard.up(modKey);
         await new Promise(resolve => setTimeout(resolve, 100));
     }
 

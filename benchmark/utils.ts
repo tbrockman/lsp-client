@@ -1,4 +1,5 @@
-import { Page } from "playwright";
+import { Page } from "puppeteer";
+
 
 export class BenchmarkContext {
     constructor(public page: Page) { }
