@@ -4,6 +4,7 @@ import { LSPClient, JSONLSPClient, languageServerSupport } from "../dist/index.j
 import * as Comlink from 'comlink'
 import { FilesystemWorker } from "./fs.worker.ts";
 import { JSONTransport, Transport } from "./transport.js";
+import { Transaction } from "@codemirror/state";
 
 let store: any;
 
@@ -56,8 +57,9 @@ window.benchmark = async function (caseName) {
         });
         statusEl.textContent = `\`${caseName}\` benchmark ready.`;
 
-        // Expose EditorView to Playwright
+        // Expose EditorView/etc. to Playwright
         window.view = view;
+        window.userEvent = Transaction.userEvent;
     } catch (error) {
         statusEl.textContent = `Error in ${caseName} benchmark: ${error.message}`;
         console.error(`Benchmark ${caseName} failed:`, error);

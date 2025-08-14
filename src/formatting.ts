@@ -1,13 +1,13 @@
 import type * as lsp from "vscode-languageserver-protocol"
-import {Command, KeyBinding} from "@codemirror/view"
-import {ChangeSpec} from "@codemirror/state"
-import {indentUnit, getIndentUnit} from "@codemirror/language"
-import {LSPPlugin} from "./plugin"
+import { Command, KeyBinding } from "@codemirror/view"
+import { ChangeSpec } from "@codemirror/state"
+import { indentUnit, getIndentUnit } from "@codemirror/language"
+import { LSPPlugin } from "./plugin"
 
 function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
   return plugin.client.request<lsp.DocumentFormattingParams, lsp.TextEdit[] | null>("textDocument/formatting", {
     options,
-    textDocument: {uri: plugin.uri},
+    textDocument: { uri: plugin.uri },
   })
 }
 
@@ -15,12 +15,14 @@ function getFormatting(plugin: LSPPlugin, options: lsp.FormattingOptions) {
 /// and then applies the changes it returns.
 export const formatDocument: Command = view => {
   const plugin = LSPPlugin.get(view)
+  console.debug('format document called')
   if (!plugin) return false
   plugin.client.sync()
   plugin.client.withMapping(mapping => getFormatting(plugin, {
     tabSize: getIndentUnit(view.state),
     insertSpaces: view.state.facet(indentUnit).indexOf("\t") < 0,
   }).then(response => {
+    console.debug('format document response', response)
     if (!response) return
     let changed = mapping.getMapping(plugin.uri)
     let changes: ChangeSpec[] = []
@@ -33,7 +35,7 @@ export const formatDocument: Command = view => {
         from = changed.mapPos(from, 1)
         to = changed.mapPos(to, -1)
       }
-      changes.push({from, to, insert: change.newText})
+      changes.push({ from, to, insert: change.newText })
     }
     view.dispatch({
       changes,
@@ -48,5 +50,5 @@ export const formatDocument: Command = view => {
 /// A keymap that binds Shift-Alt-f to
 /// [`formatDocument`](#lsp-client.formatDocument).
 export const formatKeymap: readonly KeyBinding[] = [
-  {key: "Shift-Alt-f", run: formatDocument, preventDefault: true}
+  { key: "Ctrl-Shift-k", run: formatDocument, preventDefault: true }
 ]

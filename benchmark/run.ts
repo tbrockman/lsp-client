@@ -2,8 +2,8 @@ import { chromium } from "playwright";
 import { spawn } from "child_process";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { benchmarkPhases } from "./phases";
-import { Context } from "./utils";
+import { simulations } from "./simulations";
+import { BenchmarkContext } from "./utils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -358,25 +358,11 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
                     return window.benchmark(caseName);
                 }, caseName);
 
-                const context = new Context(page);
+                const context = new BenchmarkContext(page);
 
-                // Run all benchmark phases
-                for (const phase of benchmarkPhases) {
-                    const phaseStartTime = performance.now();
-
-                    await context.setStatusText(`Running ${phase.name} phase...`);
-
-                    if (phase.fn) {
-                        // Run the specific phase function
-                        await phase.fn(context);
-                    }
-
-                    const phaseEndTime = performance.now();
-                    const phaseDuration = phaseEndTime - phaseStartTime;
-
-
-                    // Small delay between phases
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                for (const sim of simulations) {
+                    await context.setStatusText(`Running ${sim.name} phase...`);
+                    await sim.fn(context);
                 }
 
                 const endTime = performance.now();
@@ -416,7 +402,9 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
         const averaged = averageBenchmarkResults(results);
         console.log(`\n✅ Completed ${count} runs of ${caseName} benchmark. Average execution time: ${averaged.executionTime.toFixed(3)}ms`);
         return averaged;
-
+    } catch (error) {
+        console.error(`Error occurred during ${caseName} benchmark:`, error);
+        throw error;
     } finally {
         // Always close the browser and Vite server when done
         console.log(`Closing Chromium browser for ${caseName} benchmark...`);

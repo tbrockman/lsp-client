@@ -1,9 +1,7 @@
 import { Page } from "playwright";
 
-export class Context {
-    constructor(public page: Page) {
-        this.page = page;
-    }
+export class BenchmarkContext {
+    constructor(public page: Page) { }
 
     async setStatusText(text: string) {
         await this.page.evaluate((text) => {
