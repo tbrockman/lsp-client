@@ -119,21 +119,86 @@ function averageBenchmarkResults(results: BenchmarkResult[]): AveragedBenchmarkR
 }
 
 /**
+ * Displays an overall summary table with aggregated metrics from all targets.
+ */
+function displayOverallSummaryTable(stringBenchmark: AveragedBenchmarkResult, objectBenchmark: AveragedBenchmarkResult) {
+    // Aggregate metrics across all targets
+    const aggregateMetrics = (benchmark: AveragedBenchmarkResult) => {
+        const aggregated = new Map<string, number>();
+        let totalProfileTime = 0;
+        let totalProfileSamples = 0;
+        let totalHeapUsed = 0;
+        let totalHeapTotal = 0;
+
+        for (const target of benchmark.targets) {
+            totalProfileTime += target.profileStats.totalTime;
+            totalProfileSamples += target.profileStats.samples;
+            totalHeapUsed += target.heapUsage.usedBytesDelta;
+            totalHeapTotal += target.heapUsage.totalBytesDelta;
+
+            for (const metric of target.deltaMetrics) {
+                aggregated.set(metric.name, (aggregated.get(metric.name) || 0) + metric.value);
+            }
+        }
+
+        // Add profile and heap metrics
+        aggregated.set('ExecutionTime', benchmark.executionTime);
+        aggregated.set('ProfileTime', totalProfileTime);
+        aggregated.set('ProfileSamples', totalProfileSamples);
+        aggregated.set('JSHeapUsedSize', totalHeapUsed);
+        aggregated.set('JSHeapTotalSize', totalHeapTotal);
+
+        return aggregated;
+    };
+
+    const stringAggregated = aggregateMetrics(stringBenchmark);
+    const objectAggregated = aggregateMetrics(objectBenchmark);
+    const allMetricNames = new Set([...stringAggregated.keys(), ...objectAggregated.keys()]);
+
+    const tableData: Array<{ metric: string; string: string; object: string; difference: string; change: string; }> = [];
+
+    const formatValue = (value: number, metric: string): string => {
+        if (metric.toLowerCase().includes('time') || metric.toLowerCase().includes('duration') || metric === 'ExecutionTime' || metric === 'ProfileTime') return `${value.toFixed(3)}ms`;
+        if (metric.toLowerCase().includes('heap') || metric.toLowerCase().includes('bytes') || metric.toLowerCase().includes('size')) return `${(value / 1024).toFixed(2)}KB`;
+        if (metric === 'ProfileSamples') return value.toFixed(0);
+        return value.toFixed(3);
+    };
+
+    for (const metricName of allMetricNames) {
+        const stringValue = stringAggregated.get(metricName) || 0;
+        const objectValue = objectAggregated.get(metricName) || 0;
+        const difference = objectValue - stringValue;
+        const percentChange = stringValue !== 0 ? ((difference / stringValue) * 100) : 0;
+        const changeIndicator = difference > 0 ? '📈' : difference < 0 ? '📉' : '➡️';
+
+        tableData.push({
+            metric: metricName,
+            string: formatValue(stringValue, metricName),
+            object: formatValue(objectValue, metricName),
+            difference: formatValue(Math.abs(difference), metricName),
+            change: `${changeIndicator} ${percentChange.toFixed(1)}%`
+        });
+    }
+
+    console.log(`\n🔍 Overall Performance Summary:`);
+    console.log('| Metric'.padEnd(35) + '| String'.padEnd(15) + '| Object'.padEnd(15) + '| Difference'.padEnd(15) + '| Change'.padEnd(12) + '|');
+    console.log('|' + '-'.repeat(34) + '|' + '-'.repeat(14) + '|' + '-'.repeat(14) + '|' + '-'.repeat(14) + '|' + '-'.repeat(11) + '|');
+    for (const row of tableData) {
+        console.log('| ' + row.metric.padEnd(33) + '| ' + row.string.padEnd(13) + '| ' + row.object.padEnd(13) + '| ' + row.difference.padEnd(13) + '| ' + row.change.padEnd(10) + '|');
+    }
+}
+
+/**
  * Displays a formatted comparison between two averaged benchmark results.
  */
 function displayBenchmarkComparison(stringBenchmark: AveragedBenchmarkResult, objectBenchmark: AveragedBenchmarkResult) {
     console.log(`\n📊 Performance Metrics Comparison: "string" vs "object" benchmarks (averaged over ${stringBenchmark.runCount} and ${objectBenchmark.runCount} runs):`);
     console.log('='.repeat(80));
 
-    console.log('\n⏱️  Overall Execution Time:');
-    console.log('-'.repeat(50));
-    console.log(`String benchmark execution time: ${stringBenchmark.executionTime.toFixed(3)}ms`);
-    console.log(`Object benchmark execution time: ${objectBenchmark.executionTime.toFixed(3)}ms`);
-    const timeDiff = objectBenchmark.executionTime - stringBenchmark.executionTime;
-    const timeChangePercent = stringBenchmark.executionTime !== 0 ? ((timeDiff / stringBenchmark.executionTime) * 100) : 0;
-    const timeIndicator = timeDiff > 0 ? '📈' : timeDiff < 0 ? '📉' : '➡️';
-    console.log(`Time difference: ${timeIndicator} ${Math.abs(timeDiff).toFixed(3)}ms (${timeChangePercent.toFixed(1)}%)`);
+    // Display overall summary table
+    displayOverallSummaryTable(stringBenchmark, objectBenchmark);
 
+    // Display individual target tables
     const stringTargetMap = new Map(stringBenchmark.targets.map(t => [t.targetType, t]));
     const objectTargetMap = new Map(objectBenchmark.targets.map(t => [t.targetType, t]));
     const allTargetTypes = new Set([...stringTargetMap.keys(), ...objectTargetMap.keys()]);
@@ -142,44 +207,12 @@ function displayBenchmarkComparison(stringBenchmark: AveragedBenchmarkResult, ob
         const stringTarget = stringTargetMap.get(targetType);
         const objectTarget = objectTargetMap.get(targetType);
 
-        console.log(`\n🎯 ${targetType.toUpperCase()} Performance:`);
-        console.log('-'.repeat(50));
-
         if (stringTarget && objectTarget) {
-            console.log(`Profile time - String: ${stringTarget.profileStats.totalTime.toFixed(3)}ms, Object: ${objectTarget.profileStats.totalTime.toFixed(3)}ms`);
-            const profileTimeDiff = objectTarget.profileStats.totalTime - stringTarget.profileStats.totalTime;
-            const profileTimeChangePercent = stringTarget.profileStats.totalTime !== 0 ? ((profileTimeDiff / stringTarget.profileStats.totalTime) * 100) : 0;
-            const profileTimeIndicator = profileTimeDiff > 0 ? '📈' : profileTimeDiff < 0 ? '📉' : '➡️';
-            console.log(`Profile time difference: ${profileTimeIndicator} ${Math.abs(profileTimeDiff).toFixed(3)}ms (${profileTimeChangePercent.toFixed(1)}%)`);
-
-            // Display heap usage comparison
-            const stringUsedKB = stringTarget.heapUsage.usedBytesDelta / 1024;
-            const objectUsedKB = objectTarget.heapUsage.usedBytesDelta / 1024;
-            const stringTotalKB = stringTarget.heapUsage.totalBytesDelta / 1024;
-            const objectTotalKB = objectTarget.heapUsage.totalBytesDelta / 1024;
-
-            console.log(`Heap used delta - String: ${stringUsedKB.toFixed(2)}KB, Object: ${objectUsedKB.toFixed(2)}KB`);
-            const usedDiff = objectUsedKB - stringUsedKB;
-            const usedChangePercent = stringUsedKB !== 0 ? ((usedDiff / stringUsedKB) * 100) : 0;
-            const usedIndicator = usedDiff > 0 ? '📈' : usedDiff < 0 ? '📉' : '➡️';
-            console.log(`Heap used difference: ${usedIndicator} ${Math.abs(usedDiff).toFixed(2)}KB (${usedChangePercent.toFixed(1)}%)`);
-
-            console.log(`Heap total delta - String: ${stringTotalKB.toFixed(2)}KB, Object: ${objectTotalKB.toFixed(2)}KB`);
-            const totalDiff = objectTotalKB - stringTotalKB;
-            const totalChangePercent = stringTotalKB !== 0 ? ((totalDiff / stringTotalKB) * 100) : 0;
-            const totalIndicator = totalDiff > 0 ? '📈' : totalDiff < 0 ? '📉' : '➡️';
-            console.log(`Heap total difference: ${totalIndicator} ${Math.abs(totalDiff).toFixed(2)}KB (${totalChangePercent.toFixed(1)}%)`);
-
             displayTargetMetricsComparison(targetType, stringTarget, objectTarget);
-
         } else if (stringTarget) {
-            console.log(`String benchmark: ${stringTarget.profileStats.totalTime.toFixed(3)}ms (${stringTarget.profileStats.samples} samples)`);
-            console.log(`Heap used delta: ${(stringTarget.heapUsage.usedBytesDelta / 1024).toFixed(2)}KB, total delta: ${(stringTarget.heapUsage.totalBytesDelta / 1024).toFixed(2)}KB`);
-            console.log(`Object benchmark: No data`);
+            displayTargetMetricsComparison(targetType, stringTarget, null);
         } else if (objectTarget) {
-            console.log(`String benchmark: No data`);
-            console.log(`Object benchmark: ${objectTarget.profileStats.totalTime.toFixed(3)}ms (${objectTarget.profileStats.samples} samples)`);
-            console.log(`Heap used delta: ${(objectTarget.heapUsage.usedBytesDelta / 1024).toFixed(2)}KB, total delta: ${(objectTarget.heapUsage.totalBytesDelta / 1024).toFixed(2)}KB`);
+            displayTargetMetricsComparison(targetType, null, objectTarget);
         }
     }
     console.log('\n' + '='.repeat(80) + '\n');
@@ -188,22 +221,21 @@ function displayBenchmarkComparison(stringBenchmark: AveragedBenchmarkResult, ob
 /**
  * Displays a detailed table comparing metrics for a single target type.
  */
-function displayTargetMetricsComparison(targetType: string, stringTarget: TargetBenchmarkData, objectTarget: TargetBenchmarkData) {
-    const stringMap = new Map(stringTarget.deltaMetrics.map(m => [m.name, m.value]));
-    const objectMap = new Map(objectTarget.deltaMetrics.map(m => [m.name, m.value]));
-    const allMetricNames = new Set([...stringMap.keys(), ...objectMap.keys()]);
+function displayTargetMetricsComparison(targetType: string, stringTarget: TargetBenchmarkData | null, objectTarget: TargetBenchmarkData | null) {
+    if (!stringTarget && !objectTarget) {
+        return;
+    }
 
-    // Add heap metrics to the comparison
-    const heapMetrics = [
-        { name: 'Heap Used Delta', stringValue: stringTarget.heapUsage.usedBytesDelta, objectValue: objectTarget.heapUsage.usedBytesDelta },
-        { name: 'Heap Total Delta', stringValue: stringTarget.heapUsage.totalBytesDelta, objectValue: objectTarget.heapUsage.totalBytesDelta }
-    ];
+    const stringMap = new Map(stringTarget?.deltaMetrics.map(m => [m.name, m.value]) || []);
+    const objectMap = new Map(objectTarget?.deltaMetrics.map(m => [m.name, m.value]) || []);
+    const allMetricNames = new Set([...stringMap.keys(), ...objectMap.keys()]);
 
     const tableData: Array<{ metric: string; string: string; object: string; difference: string; change: string; }> = [];
 
     const formatValue = (value: number, metric: string): string => {
-        if (metric.toLowerCase().includes('time') || metric.toLowerCase().includes('duration')) return `${value.toFixed(3)}ms`;
-        if (metric.toLowerCase().includes('bytes') || metric.toLowerCase().includes('size') || metric.toLowerCase().includes('heap')) return `${(value / 1024).toFixed(2)}KB`;
+        if (metric.toLowerCase().includes('time') || metric.toLowerCase().includes('duration') || metric === 'ProfileTime') return `${value.toFixed(3)}ms`;
+        if (metric.toLowerCase().includes('heap') || metric.toLowerCase().includes('bytes') || metric.toLowerCase().includes('size')) return `${(value / 1024).toFixed(2)}KB`;
+        if (metric === 'ProfileSamples') return value.toFixed(0);
         return value.toFixed(3);
     };
 
@@ -225,19 +257,46 @@ function displayTargetMetricsComparison(targetType: string, stringTarget: Target
         });
     }
 
-    // Add heap metrics
-    for (const heapMetric of heapMetrics) {
-        const difference = heapMetric.objectValue - heapMetric.stringValue;
-        const percentChange = heapMetric.stringValue !== 0 ? ((difference / heapMetric.stringValue) * 100) : 0;
+    // Add profile metrics
+    const profileMetrics = [
+        { name: 'ProfileTime', stringValue: stringTarget?.profileStats.totalTime || 0, objectValue: objectTarget?.profileStats.totalTime || 0 },
+        { name: 'ProfileSamples', stringValue: stringTarget?.profileStats.samples || 0, objectValue: objectTarget?.profileStats.samples || 0 }
+    ];
+
+    for (const profileMetric of profileMetrics) {
+        const difference = profileMetric.objectValue - profileMetric.stringValue;
+        const percentChange = profileMetric.stringValue !== 0 ? ((difference / profileMetric.stringValue) * 100) : 0;
         const changeIndicator = difference > 0 ? '📈' : difference < 0 ? '📉' : '➡️';
 
         tableData.push({
-            metric: heapMetric.name,
-            string: formatValue(heapMetric.stringValue, heapMetric.name),
-            object: formatValue(heapMetric.objectValue, heapMetric.name),
-            difference: formatValue(Math.abs(difference), heapMetric.name),
+            metric: profileMetric.name,
+            string: formatValue(profileMetric.stringValue, profileMetric.name),
+            object: formatValue(profileMetric.objectValue, profileMetric.name),
+            difference: formatValue(Math.abs(difference), profileMetric.name),
             change: `${changeIndicator} ${percentChange.toFixed(1)}%`
         });
+    }
+
+    // Add heap metrics (exclude for main page since it's already in performance metrics)
+    if (targetType !== 'main') {
+        const heapMetrics = [
+            { name: 'JSHeapUsedSize', stringValue: stringTarget?.heapUsage.usedBytesDelta || 0, objectValue: objectTarget?.heapUsage.usedBytesDelta || 0 },
+            { name: 'JSHeapTotalSize', stringValue: stringTarget?.heapUsage.totalBytesDelta || 0, objectValue: objectTarget?.heapUsage.totalBytesDelta || 0 }
+        ];
+
+        for (const heapMetric of heapMetrics) {
+            const difference = heapMetric.objectValue - heapMetric.stringValue;
+            const percentChange = heapMetric.stringValue !== 0 ? ((difference / heapMetric.stringValue) * 100) : 0;
+            const changeIndicator = difference > 0 ? '📈' : difference < 0 ? '📉' : '➡️';
+
+            tableData.push({
+                metric: heapMetric.name,
+                string: formatValue(heapMetric.stringValue, heapMetric.name),
+                object: formatValue(heapMetric.objectValue, heapMetric.name),
+                difference: formatValue(Math.abs(difference), heapMetric.name),
+                change: `${changeIndicator} ${percentChange.toFixed(1)}%`
+            });
+        }
     }
 
     if (tableData.length === 0) {
@@ -245,7 +304,7 @@ function displayTargetMetricsComparison(targetType: string, stringTarget: Target
         return;
     }
 
-    console.log(`\n🔍 ${targetType} Performance Metrics:`);
+    console.log(`\n🔍 ${targetType.toUpperCase()} Performance Metrics:`);
     console.log('| Metric'.padEnd(35) + '| String'.padEnd(15) + '| Object'.padEnd(15) + '| Difference'.padEnd(15) + '| Change'.padEnd(12) + '|');
     console.log('|' + '-'.repeat(34) + '|' + '-'.repeat(14) + '|' + '-'.repeat(14) + '|' + '-'.repeat(14) + '|' + '-'.repeat(11) + '|');
     for (const row of tableData) {
