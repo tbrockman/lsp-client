@@ -273,7 +273,8 @@ function processMetrics(metrics: any): {
     };
 }
 
-async function logMetrics(cdp: any, interval: number): Promise<() => Promise<CPUStats>> {
+// Bit skeptical about this, credit: https://github.com/puppeteer/puppeteer/issues/6429#issuecomment-881756451
+async function monitorTimeActive(cdp: any, interval: number): Promise<() => Promise<CPUStats>> {
     const { timestamp: startTime, activeTime: initialActiveTime } = processMetrics(await cdp.send("Performance.getMetrics"));
     const snapshots: CPUUsageSnapshot[] = [];
     let cumulativeActiveTime = initialActiveTime;
@@ -347,7 +348,7 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
                 console.log(`Running ${caseName} benchmark iteration...`);
 
                 // Start CPU monitoring
-                const stopCPUMonitoring = await logMetrics(client, 100); // Sample every 100ms
+                const stopMonitoring = await monitorTimeActive(client, 100); // Sample every 100ms
 
                 const before = await client.send("Performance.getMetrics");
                 console.log('Initial metrics collected, running benchmark...');
@@ -372,7 +373,7 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
                 const after = await client.send("Performance.getMetrics");
 
                 // Stop CPU monitoring and get stats
-                const cpuStats = await stopCPUMonitoring();
+                const cpuStats = await stopMonitoring();
 
                 console.log('Final metrics collected.');
 
