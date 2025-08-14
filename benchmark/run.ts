@@ -8,9 +8,6 @@ import { Profiler } from 'inspector';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// --- INTERFACES ---
-
 interface Metric {
     name: string;
     value: number;
@@ -47,8 +44,6 @@ interface ViteServer {
     port: number;
     close: () => void;
 }
-
-// --- UTILITY & REPORTING FUNCTIONS (Largely unchanged) ---
 
 /**
  * Averages the results of multiple benchmark runs.
@@ -361,8 +356,6 @@ function startViteServer(): Promise<ViteServer> {
     });
 }
 
-// --- CORE BENCHMARKING LOGIC (Refactored for Puppeteer) ---
-
 /**
  * Starts profiling on a single target (page or worker).
  */
@@ -478,13 +471,12 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
     console.log(`\n🚀 Running ${caseName} benchmark ${count} times...`);
 
     const viteServer = await startViteServer();
-    const browser = await puppeteer.launch({ headless: false });
 
     try {
         const results: BenchmarkResult[] = [];
         for (let i = 0; i < count; i++) {
             console.log(`\n--- ${caseName} benchmark run ${i + 1}/${count} ---`);
-
+            const browser = await puppeteer.launch({ headless: false });
             const browserContext = await browser.createBrowserContext();
             const page = await browserContext.newPage();
 
@@ -502,7 +494,7 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 // Now fetch all targets and start profiling
-                const allTargets = await browser.targets();
+                const allTargets = browser.targets();
                 const activeTargets = new Map<string, { session: CDPSession; data: { beforeMetrics: Metric[]; beforeHeap: { used: number; total: number }; targetData: TargetBenchmarkData } }>();
 
                 console.log(`Found ${allTargets.length} total targets, filtering for relevant ones...`);
@@ -567,6 +559,7 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
 
             } finally {
                 await browserContext.close();
+                await browser.close();
             }
         }
 
@@ -578,12 +571,9 @@ async function runMultipleBenchmarks(caseName: string, count: number): Promise<A
         console.error(`❌ Error during ${caseName} benchmark:`, error);
         throw error;
     } finally {
-        await browser.close();
         viteServer.close();
     }
 }
-
-// --- MAIN EXECUTION ---
 
 async function run(count: number = 3) {
     console.log(`\n🎯 Running benchmarks with ${count} iterations per case...`);
